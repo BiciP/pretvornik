@@ -35,10 +35,11 @@ export interface TableColumn extends PDObject {
     },
     "a:Mandatory": {
         "_text": string // "1"
-    }
+    },
+    "isIdentifier"? : Boolean // custom property, ki pove ali je ključ
 }
 
-interface TableKey extends PDObject {
+export interface TableKey extends PDObject {
     "c:Key.Columns": {
         "o:Column": {
             "_attributes": {
@@ -105,10 +106,4 @@ export interface PhysicalDiagram extends PDObject {
         "o:TextSymbol": object | object[],
         "o:TableSymbol": object | object[]
     },
-    // "c:Tables": {
-    //     "o:Table": TableSymbol | TableSymbol[]
-    // },
-    // "c:References": {
-    //     "o:Reference": object
-    // }
 }
