@@ -1,6 +1,7 @@
 import {PhysicalDiagram, TableColumn, TableKey, TableSymbol} from "../types";
 import ParserError from "../ParseError";
 import {PDTableObject} from "../PDTypes/PDTable";
+import {PDReferenceObject} from "../PDTypes/PDReference";
 
 export const parser = (diagram: PhysicalDiagram) => {
     console.log(diagram["c:Symbols"]["o:TableSymbol"])
@@ -40,6 +41,26 @@ export function parseTables(tables: PDTableObject[]) {
     ${getPUMLColumns(columns)}
 }
 `
+    })
+
+    return obj
+}
+
+export function parseReferences(references: PDReferenceObject[]) {
+    let obj = {}
+    let cardinalityMap = {
+        "0..1": "|o--||",
+        "0..*": "|o--|{",
+        "1..1": "||--||",
+        "1..*": "||--|{",
+    }
+
+    references.forEach(ref => {
+        let parent = ref["c:ParentTable"]["o:Table"]._attributes.Ref
+        let child = ref["c:ChildTable"]["o:Table"]._attributes.Ref
+        let cardinality = cardinalityMap[ref["a:Cardinality"]._text]
+
+        obj[ref._attributes.Id] = `${parent} ${cardinality} ${child}`
     })
 
     return obj

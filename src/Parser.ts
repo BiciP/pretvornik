@@ -1,9 +1,10 @@
 import {xml2js} from "xml-js"
 import * as console from "console";
-import {parser, parseTables} from "./DiagramParser/Physical";
+import {parser, parseReferences, parseTables} from "./DiagramParser/Physical";
 import {PdInfo, TableColumn, TableSymbol} from "./types";
 import ParserError, {PARSE_ERROR_MESSAGE} from "./ParseError";
 import {PDTableObject} from "./PDTypes/PDTable";
+import {PDReferenceObject} from "./PDTypes/PDReference";
 
 // Pretvori XML v JS in inicializira branje diagrama
 export const parseFile = (file: string) => {
@@ -57,14 +58,17 @@ const parsePdInfo = (pdInfo: string) => {
 * */
 
 const PDCollectionParser = {
-    "c:Tables": function (collection) {
-        let tables: PDTableObject[] = [].concat(collection["o:Table"])
+    "c:Tables": function (col) {
+        let tables: PDTableObject[] = [].concat(col["o:Table"])
         return parseTables(tables)
     },
-    "c:References": function (data) {
+
+    "c:References": function (col) {
         console.log("TODO: Parse References")
-        return {}
+        let references: PDReferenceObject[] = [].concat(col["o:Reference"])
+        return parseReferences(references)
     },
+
     _default: function (collection) {
         throw new ParserError(`Collection '${collection}' not implemented.`)
     }

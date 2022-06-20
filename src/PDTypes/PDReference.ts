@@ -1,6 +1,6 @@
 import {IdAttributes, PDTextObject, RefAttributes} from "./index";
 
-export interface ReferenceSymbol extends IdAttributes {
+export interface PDReferenceSymbol extends IdAttributes {
     "a:Rect": PDTextObject,
     "a:ListOfPoints": PDTextObject,
     "a:ArrowStyle": PDTextObject,
@@ -32,7 +32,7 @@ export interface ReferenceJoinObject extends IdAttributes {
     }
 }
 
-export interface ReferenceObject extends IdAttributes {
+export interface PDReferenceObject extends IdAttributes {
     "a:ObjectID": PDTextObject,
     "a:Name": PDTextObject,
     "a:Code": PDTextObject,
