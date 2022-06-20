@@ -1,13 +1,16 @@
 import {PhysicalDiagram, TableColumn, TableKey, TableSymbol} from "../types";
 import ParserError from "../ParseError";
+import {PDTableObject} from "../PDTypes/PDTable";
 
 export const parser = (diagram: PhysicalDiagram) => {
     console.log(diagram["c:Symbols"]["o:TableSymbol"])
 }
 
-export function parseTables(pdModel: object) {
-    let tables: TableSymbol[] = [].concat(pdModel["c:Tables"]["o:Table"])
-    return tables.map(table => {
+export function parseTables(tables: PDTableObject[]) {
+    // { o1: PUMLEntity, o2: PUMLEntity }
+    let obj = {}
+
+    tables.forEach(table => {
         let columns: TableColumn[] = [].concat(table["c:Columns"]["o:Column"])
         let keys: TableKey[] = [].concat(table["c:Keys"]["o:Key"])
 
@@ -31,13 +34,15 @@ export function parseTables(pdModel: object) {
         const getPUMLColumns = (columns: TableColumn[]) =>
             columns.filter(col => !col.isIdentifier).map(col => parseColumnData(col)).join("\n    ")
 
-        return `entity "${table["a:Name"]._text}" as ${table._attributes.Id} {
+        obj[table._attributes.Id] = `entity "${table["a:Name"]._text}" as ${table._attributes.Id} {
     ${PUMLKeys}
     --
     ${getPUMLColumns(columns)}
 }
 `
     })
+
+    return obj
 }
 
 /*
