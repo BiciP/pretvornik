@@ -5,6 +5,7 @@ import {PdInfo, TableColumn, TableSymbol} from "./types";
 import ParserError, {PARSE_ERROR_MESSAGE} from "./ParseError";
 import {PDTableObject} from "./PDTypes/PDTable";
 import {PDReferenceObject} from "./PDTypes/PDReference";
+import {PDPhysicalDiagram} from "./PDTypes/PDPhysicalDiagram";
 
 // Pretvori XML v JS in inicializira branje diagrama
 export const parseFile = (file: string) => {
@@ -30,16 +31,23 @@ const parsePdModel = (pdModel: object) => {
     // Vrsta objektov, ki jih lahko pretvorimo v PlantUML notacijo
     let collectionQueue = ["c:Tables", "c:References"]
 
+    // V prihodje se bomo po pretvorjenih objektih sklicevali
+    // po objektu (o:XXX) in ne po collectionu (c:XXX)
+    let colObjMap = {
+        "c:Tables": "o:Table",
+        "c:References": "o:Reference"
+    }
+
     // this should resolve into an object of objects
     // { "c:Tables": { o1: PUMLEntity, ... }, "c:References": { o2: PUMLEntity } }
     collectionQueue.forEach(col => {
         // @ts-ignore
-        definitions[col] = PDCollectionResolver(col, pdModel[col])
+        definitions[colObjMap[col]] = PDCollectionResolver(col, pdModel[col])
     })
 
-    console.log(definitions)
-    // let physicalDiagrams = [].concat(pdModel["c:PhysicalDiagrams"]["o:PhysicalDiagram"])
-    // physicalDiagrams.forEach(parser)
+    let physicalDiagrams: PDPhysicalDiagram[] = [].concat(pdModel["c:PhysicalDiagrams"]["o:PhysicalDiagram"])
+    let physicalParserResolver = diagram => parser(diagram, definitions)
+    physicalDiagrams.forEach(physicalParserResolver)
 }
 
 // Pretvori podatke o PowerDesigner v formatu KEY="VALUE" v JS objekt

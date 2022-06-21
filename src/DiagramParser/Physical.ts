@@ -2,9 +2,14 @@ import {PhysicalDiagram, TableColumn, TableKey, TableSymbol} from "../types";
 import ParserError from "../ParseError";
 import {PDTableObject} from "../PDTypes/PDTable";
 import {PDReferenceObject} from "../PDTypes/PDReference";
+import {PDPhysicalDiagram} from "../PDTypes/PDPhysicalDiagram";
+import console from "console";
 
-export const parser = (diagram: PhysicalDiagram) => {
-    console.log(diagram["c:Symbols"]["o:TableSymbol"])
+export const parser = (diagram: PDPhysicalDiagram, PDObjects: any) => {
+    let symbols = diagram["c:Symbols"]
+    Object.keys(symbols).forEach((obj) => {
+        console.log(obj)
+    })
 }
 
 export function parseTables(tables: PDTableObject[]) {
@@ -69,6 +74,37 @@ export function parseReferences(references: PDReferenceObject[]) {
 /*
 * HELPERS
 * */
+
+const PDSymbolParser = {
+    // TODO: IMPLEMENT SYMBOL PARSERS
+
+    _default: function (collection) {
+        throw new ParserError(`Symbol '${collection}' not implemented.`)
+    }
+}
+
+// https://github.com/rwaldron/idiomatic.js - 7.A.1.2 Misc - A better switch statement,
+const PDCollectionResolver = function () {
+    let args, key, delegate
+
+    // Transform arguments list into an array
+    args = [].slice.call(arguments)
+
+    // shift the case key from the arguments
+    key = args.shift()
+
+    // Assign the default case handler
+    delegate = PDSymbolParser._default
+
+    // Derive the method to delegate operation to
+    if (PDSymbolParser.hasOwnProperty(key)) {
+        delegate = PDSymbolParser[key]
+    }
+
+    // The scope arg could be set to something specific,
+    // in this case, |null| will suffice
+    return delegate.apply(null, args)
+}
 
 // Pretvori PowerDesigner TableColumn v PlantUML notacijo
 const parseColumnData = (col: TableColumn) =>
