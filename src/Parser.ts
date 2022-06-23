@@ -45,9 +45,15 @@ const parsePdModel = (pdModel: object) => {
         definitions[colObjMap[col]] = PDCollectionResolver(col, pdModel[col])
     })
 
+    // Seznam pretvorjenih diagramov datoteke
+    let converted = []
+
+    // Pretvorba fizičnih diagramov
     let physicalDiagrams: PDPhysicalDiagram[] = [].concat(pdModel["c:PhysicalDiagrams"]["o:PhysicalDiagram"])
     let physicalParserResolver = diagram => parser(diagram, definitions)
-    physicalDiagrams.forEach(physicalParserResolver)
+    physicalDiagrams.forEach(diagram => converted.push(physicalParserResolver(diagram)))
+
+    console.log(converted)
 }
 
 // Pretvori podatke o PowerDesigner v formatu KEY="VALUE" v JS objekt
