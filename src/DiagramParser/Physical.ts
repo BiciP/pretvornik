@@ -6,7 +6,8 @@ import {PDPhysicalDiagram} from "../PDTypes/PDPhysicalDiagram";
 import * as fs from "fs";
 
 export const parser = (diagram: PDPhysicalDiagram, PDObjects: any) => {
-    let PUMLDiagram = ""
+    // Initialize the PlantUML notation diagram and give it a name
+    let PUMLDiagram = "@startuml " + diagram["a:Name"]._text + "\n\n"
 
     // Parse Table symbols
     let tableSymbols: PDTableSymbol[] = [].concat(diagram["c:Symbols"]["o:TableSymbol"])
@@ -15,6 +16,9 @@ export const parser = (diagram: PDPhysicalDiagram, PDObjects: any) => {
     // Parse Reference symbols
     let refSymbols: PDReferenceSymbol[] = [].concat(diagram["c:Symbols"]["o:ReferenceSymbol"])
     refSymbols.forEach(symbol => PUMLDiagram += PDObjects["o:Reference"][symbol["c:Object"]["o:Reference"]._attributes.Ref] + "\n")
+
+    // Finish the PlnatUML notation
+    PUMLDiagram += "\n\n@enduml"
 
     return {
         diagram: {
@@ -30,8 +34,8 @@ export function parseTables(tables: PDTableObject[]) {
     let obj = {}
 
     tables.forEach(table => {
-        let columns: TableColumn[] = [].concat(table["c:Columns"]["o:Column"])
-        let keys: TableKey[] = [].concat(table["c:Keys"]["o:Key"])
+        let columns: TableColumn[] = table["c:Columns"] != null ? [].concat(table["c:Columns"]["o:Column"]) : []
+        let keys: TableKey[] = table["c:Keys"] != null ? [].concat(table["c:Keys"]["o:Key"]) : []
 
         let PUMLKeys = keys.map(pk => {
             let keyColumns = [].concat(pk["c:Key.Columns"]["o:Column"])
@@ -90,4 +94,4 @@ export function parseReferences(references: PDReferenceObject[]) {
 
 // Pretvori PowerDesigner TableColumn v PlantUML notacijo
 const parseColumnData = (col: TableColumn) =>
-    `${col["a:Mandatory"]?._text === "1" ? "*" : ""} ${col["a:Name"]._text}: ${col["a:DataType"]._text}`
+    `${col["a:Mandatory"]?._text === "1" ? "*" : ""} ${col["a:Name"]._text}: ${col["a:DataType"]?._text}`

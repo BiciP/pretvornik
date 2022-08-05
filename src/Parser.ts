@@ -6,6 +6,7 @@ import ParserError, {PARSE_ERROR_MESSAGE} from "./ParseError";
 import {PDTableObject} from "./PDTypes/PDTable";
 import {PDReferenceObject} from "./PDTypes/PDReference";
 import {PDPhysicalDiagram} from "./PDTypes/PDPhysicalDiagram";
+import { writeFileSync } from "fs";
 
 // Pretvori XML v JS in inicializira branje diagrama
 export const parseFile = (file: string) => {
@@ -53,7 +54,9 @@ const parsePdModel = (pdModel: object) => {
     let physicalParserResolver = diagram => parser(diagram, definitions)
     physicalDiagrams.forEach(diagram => converted.push(physicalParserResolver(diagram)))
 
-    console.log(converted)
+    converted.forEach(diagram => {
+        writeFileSync(diagram.diagram.name + ".puml", diagram.data)
+    })
 }
 
 // Pretvori podatke o PowerDesigner v formatu KEY="VALUE" v JS objekt
