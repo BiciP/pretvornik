@@ -1,5 +1,6 @@
 import { getCollectionAsArray } from "../helpers";
 import ParserError from "../ParseError";
+import { RefAttributes } from "../PDTypes";
 import { EntitySymbol, InheritanceLinkSymbol, PDConceptualDiagram, RelationshipSymbol } from "../PDTypes/PDConceptualDiagram";
 import { PDDataItem } from "../PDTypes/PDDataItem";
 import { EntityAttribute, Identifier, IdentifierRef, PDEntityObject } from "../PDTypes/PDEntity";
@@ -60,23 +61,28 @@ export function parseEntities(entities: PDEntityObject[]) {
     let primaryIdentifiersKeys = primaryIdentifiers.map((pk) => pk._attributes.Ref);
 
     // Declare identifiers
+    let piAttributes = new Set()
     let identifiers: Identifier[] = getCollectionAsArray(entity["c:Identifiers"]?.["o:Identifier"]);
     identifiers.forEach((identifier) => {
+      let attributesRefs: RefAttributes[] = getCollectionAsArray(identifier["c:Identifier.Attributes"]?.["o:EntityAttribute"])
+      attributesRefs.forEach(attributeRef => piAttributes.add(attributeRef._attributes.Ref))
       let isPrimary = primaryIdentifiersKeys.includes(identifier._attributes.Id);
-      obj[entityId] += `\t* ${identifier["a:Name"]._text} ${isPrimary ? "<<PK>>" : ""}\n`;
+      obj[entityId] += `\t* ${identifier["a:Name"]._text} ${isPrimary ? "<<pi>>" : ""}\n`;
     });
 
     // Draw the line between identifiers and attributes if there are any identifiers
-    if (identifiers.length) obj[entityId] += "\t--\n";
+    obj[entityId] += "\t--\n";
 
     // Declare attributes
     let attributes: EntityAttribute[] = getCollectionAsArray(entity["c:Attributes"]?.["o:EntityAttribute"]);
     attributes.forEach((attribute) => {
+      let isIdentifier = piAttributes.has(attribute._attributes.Id)
       let isMandatory = attribute["a:BaseAttribute.Mandatory"]?._text === "1";
       let dataItemRef = attribute["c:DataItem"]["o:DataItem"]._attributes.Ref;
       let dataItem = dataItems.find((item) => item._attributes.Id === dataItemRef);
       if (dataItem == null) throw new ParserError(`Attribute data item does not exist: Ref[${dataItemRef}]`);
-      obj[entityId] += `\t${isMandatory ? "* " : ""}${dataItem["a:Name"]._text}\n`;
+      let dataType = extractDataType(dataItem)
+      obj[entityId] += `\t${isMandatory ? "* " : ""}${dataItem["a:Name"]._text} : ${dataType}${isIdentifier ? " <<pi>>" : ""}\n`;
     });
 
     // PlantUML entity finalization
@@ -127,6 +133,38 @@ export function parseInheritanceLinks(inheritanceLinks: PDInheritanceLink[]) {
 
 // HELPERS
 
+function extractDataType(dataItem: PDDataItem) {
+  let dataType: string = dataItem["a:DataType"]?._text
+  let length: string = dataItem["a:Length"]?._text
+  let precision: string = dataItem["a:Precision"]?._text
+
+  if (!dataType) {
+    return "<<undefined>>"
+  }
+
+  let isDefined = Object.keys(dataTypes)
+    .every(key => {
+      if (dataType.startsWith(key)) {
+        dataType = dataTypes[key]
+        return false
+      } 
+      
+      return true
+    })
+
+  if (isDefined) {
+    console.error(`Data type not implemented: '${dataType}'`)
+  }
+
+  if (length) {
+    dataType += ` (${length}`
+    if (precision) dataType += `,${precision}`
+    dataType += `)`
+  }
+
+  return dataType
+}
+
 function getCardinality(relationship: PDRelationship, entity: 1 | 2): string {
   let keys = {
     1: "a:Entity1ToEntity2RoleCardinality",
@@ -136,6 +174,35 @@ function getCardinality(relationship: PDRelationship, entity: 1 | 2): string {
   let cardinality = cardinalityMap[raw];
   if (!cardinality) throw new ParserError("Invalid cardinality: " + raw);
   return cardinality[entity];
+}
+
+let dataTypes = {
+  "VBIN": "Variable binary",
+  "VMBT": "Variable multibyte",
+  "LBIN": "Long binary",
+  "BIN": "Binary",
+  "BMP": "Bitmap",
+  "PIC": "Image",
+  "MBT": "Multibyte",
+  "OLE": "OLE",
+  "TXT": "Text",
+  "VA": "Variable characters",
+  "MN": "Money",
+  "BT": "Byte",
+  "BL": "Boolean",
+  "LA": "Long characters",
+  "SF": "Short float",
+  "SI": "Short integer",
+  "DT": "Date & Time",
+  "DC": "Decimal",
+  "TS": "Timestamp",
+  "NO": "Serial",
+  "N": "Number",
+  "D": "Date",
+  "T": "Time",
+  "I": "Integer",
+  "A": "Characters",
+  "F": "Float",
 }
 
 let cardinalityMap = {

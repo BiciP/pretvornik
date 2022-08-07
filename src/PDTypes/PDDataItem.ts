@@ -5,4 +5,7 @@ export interface PDDataItem extends PDObject {
   "a:Creator": PDTextObject;
   "a:ModificationDate": PDTextObject;
   "a:Modifier": PDTextObject;
+  "a:DataType": PDTextObject;
+  "a:Length"?: PDTextObject;
+  "a:Precision"?: PDTextObject;
 }
