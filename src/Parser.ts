@@ -1,12 +1,11 @@
 import { xml2js } from "xml-js";
-import * as console from "console";
 import { parser, parseReferences, parseTables } from "./DiagramParser/Physical";
 import { PdInfo, TableColumn, TableSymbol } from "./types";
 import ParserError, { PARSE_ERROR_MESSAGE } from "./ParseError";
 import { PDTableObject } from "./PDTypes/PDTable";
 import { PDReferenceObject } from "./PDTypes/PDReference";
 import { PDPhysicalDiagram } from "./PDTypes/PDPhysicalDiagram";
-import { writeFileSync } from "fs";
+// import { writeFileSync } from "fs";
 import { parseConceptualDiagram, parseEntities, parseInheritanceLinks, parseRelationships } from "./DiagramParser/Conceptual";
 import { PDConceptualDiagram } from "./PDTypes/PDConceptualDiagram";
 import { getCollectionAsArray } from "./helpers";
@@ -20,16 +19,17 @@ export const parseFile = (file: string) => {
   let pdModel = xml["Model"]?.["o:RootObject"]?.["c:Children"]?.["o:Model"];
   if (!pdInfo || !pdModel) throw new ParserError(PARSE_ERROR_MESSAGE.NOT_A_PD_FILE);
 
-  parsePdInfo(pdInfo);
-  parsePdModel(pdModel);
+  return {
+    info: parsePdInfo(pdInfo),
+    model: parsePdModel(pdModel) 
+  }
 };
 
 // Pretvori diagrame v PlantUML notacijo
 // najprej pretvorimo vse objekte v PlantUML notacijo in si zapišemo
 // nato začnemo s pretvorbo diagramov
 const parsePdModel = (pdModel: object) => {
-  global.pdModel = pdModel;
-  writeFileSync("json.json", JSON.stringify(pdModel));
+  // writeFileSync("json.json", JSON.stringify(pdModel));
   // PlantUML definicije PowerDesigner objektov
   let definitions = {};
 
@@ -53,7 +53,7 @@ const parsePdModel = (pdModel: object) => {
     if (pdModel[col] == null) return;
 
     // @ts-ignore
-    definitions[colObjMap[col]] = PDCollectionResolver(col, pdModel[col]);
+    definitions[colObjMap[col]] = PDCollectionResolver(col, pdModel[col], pdModel);
   });
 
   // Seznam pretvorjenih diagramov datoteke
@@ -74,9 +74,7 @@ const parsePdModel = (pdModel: object) => {
   conceptualDiagrams.forEach((diagram) => converted.push(conceptualParserResolver(diagram)));
   // END - Pretvorba konceptualnih diagramov
 
-  converted.forEach((diagram) => {
-    writeFileSync(diagram.diagram.name + ".puml", diagram.data);
-  });
+  return converted
 };
 
 // Pretvori podatke o PowerDesigner v formatu KEY="VALUE" v JS objekt
@@ -104,9 +102,9 @@ const PDCollectionParser = {
     return parseReferences(references);
   },
 
-  "c:Entities": function (col) {
+  "c:Entities": function (col, pdModel) {
     let entities = [].concat(col["o:Entity"]);
-    return parseEntities(entities);
+    return parseEntities(entities, pdModel);
   },
 
   "c:Relationships": function (col) {
@@ -114,9 +112,9 @@ const PDCollectionParser = {
     return parseRelationships(relationships);
   },
 
-  "c:InheritanceLinks": function (col) {
+  "c:InheritanceLinks": function (col, pdModel) {
     let inheritanceLinks = [].concat(col["o:InheritanceLink"]);
-    return parseInheritanceLinks(inheritanceLinks);
+    return parseInheritanceLinks(inheritanceLinks, pdModel);
   },
 
   _default: function (collection) {

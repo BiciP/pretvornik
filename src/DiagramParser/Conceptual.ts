@@ -41,13 +41,10 @@ export function parseConceptualDiagram(diagram: PDConceptualDiagram, PDObjects: 
   };
 }
 
-export function parseEntities(entities: PDEntityObject[]) {
+export function parseEntities(entities: PDEntityObject[], pdModel: object) {
   // { o1: PUMLEntity, o2: PUMLEntity }
   let obj = {};
-
-  // TODO: CHECK IF THIS WORKS IN THE BROWSER
-  // (PROBABLY NOT, THEREFORE SHOULD PASS THE PDMODEL IN THE FUNCTION PARAMS)
-  let dataItems: PDDataItem[] = getCollectionAsArray(global.pdModel?.["c:DataItems"]?.["o:DataItem"]);
+  let dataItems: PDDataItem[] = getCollectionAsArray(pdModel?.["c:DataItems"]?.["o:DataItem"]);
 
   entities.forEach((entity) => {
     // Extract entity Id
@@ -110,11 +107,11 @@ export function parseRelationships(relationships: PDRelationship[]) {
   return obj;
 }
 
-export function parseInheritanceLinks(inheritanceLinks: PDInheritanceLink[]) {
+export function parseInheritanceLinks(inheritanceLinks: PDInheritanceLink[], pdModel: object) {
   let obj = {};
 
   // Get the model inheritances, needed to link with InheritanceLink
-  let Inheritances: PDInheritance[] = getCollectionAsArray(global.pdModel?.["c:Inheritances"]?.["o:Inheritance"]);
+  let Inheritances: PDInheritance[] = getCollectionAsArray(pdModel?.["c:Inheritances"]?.["o:Inheritance"]);
 
   inheritanceLinks.forEach((inheritanceLink) => {
     let inheritanceId = inheritanceLink["c:Object1"]["o:Inheritance"]._attributes.Ref;
