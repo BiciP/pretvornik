@@ -24,6 +24,7 @@ export const parser = (diagram: PDPhysicalDiagram, PDObjects: any) => {
         diagram: {
             id: diagram._attributes.Id,
             name: diagram["a:Name"]._text,
+            type: "Physical"
         },
         data: PUMLDiagram
     }
@@ -59,7 +60,7 @@ export function parseTables(tables: PDTableObject[]) {
 
         obj[table._attributes.Id] = `entity "${table["a:Name"]._text}" as ${table._attributes.Id} {
     ${PUMLKeys}
-    --
+    ${PUMLKeys.length > 0 ? "--" : ""}
     ${getPUMLColumns(columns)}
 }
 `

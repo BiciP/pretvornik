@@ -3,3 +3,4 @@ node_modules/
 build/
 fizicini_model_2.pdm
 *.puml
+json.json
