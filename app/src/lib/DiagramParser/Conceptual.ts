@@ -197,6 +197,7 @@ let dataTypes = {
   "LA": "Long characters",
   "SF": "Short float",
   "SI": "Short integer",
+  "LI": "Long integer",
   "DT": "Date & Time",
   "DC": "Decimal",
   "TS": "Timestamp",
