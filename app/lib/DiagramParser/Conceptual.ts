@@ -139,8 +139,8 @@ export function parseInheritanceLinks(inheritanceLinks: PDInheritanceLink[], pdM
 
 function extractDataType(dataItem: PDDataItem) {
   let dataType: string = dataItem["a:DataType"]?._text
-  let length: string = dataItem["a:Length"]?._text
-  let precision: string = dataItem["a:Precision"]?._text
+  let length: string | undefined = dataItem["a:Length"]?._text
+  let precision: string | undefined = dataItem["a:Precision"]?._text
 
   if (!dataType) {
     return null
