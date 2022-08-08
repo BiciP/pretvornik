@@ -11,7 +11,6 @@
 				output = e.target?.result;
 				let data = Parser(output);
 				diagrams = [...data.model];
-				data.model.forEach(model => diagrams.push(model))
 			};
 			reader.readAsText(filePath.target.files[0]);
 		} else {
