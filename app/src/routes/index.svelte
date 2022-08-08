@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	import Parser from '../../../src/index';
+	import Parser from '../../lib/index'
 
 	let reader: FileReader | undefined;
 	let diagrams: any[] = [];
