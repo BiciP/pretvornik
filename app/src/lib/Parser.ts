@@ -1,26 +1,26 @@
-import { xml2js } from "xml-js";
+import {XMLParser} from "fast-xml-parser"
 import { parser, parseReferences, parseTables } from "./DiagramParser/Physical";
-import { PdInfo, TableColumn, TableSymbol } from "./types";
 import ParserError, { PARSE_ERROR_MESSAGE } from "./ParseError";
-import { PDTableObject } from "./PDTypes/PDTable";
-import { PDReferenceObject } from "./PDTypes/PDReference";
-import { PDPhysicalDiagram } from "./PDTypes/PDPhysicalDiagram";
-// import { writeFileSync } from "fs";
 import { parseConceptualDiagram, parseEntities, parseInheritanceLinks, parseRelationships } from "./DiagramParser/Conceptual";
-import { PDConceptualDiagram } from "./PDTypes/PDConceptualDiagram";
 import { getCollectionAsArray } from "./helpers";
+import type { PdInfo } from "./types";
+import type { PDTableObject } from "./PDTypes/PDTable";
+import type { PDReferenceObject } from "./PDTypes/PDReference";
+import type { PDPhysicalDiagram } from "./PDTypes/PDPhysicalDiagram";
+import type { PDConceptualDiagram } from "./PDTypes/PDConceptualDiagram";
 
 // Pretvori XML v JS in inicializira branje diagrama
 export const parseFile = (file: string) => {
-  let xml = xml2js(file, { compact: true });
+  let parser = new XMLParser({ ignoreAttributes: false })
+  let xml = parser.parse(file)
 
   // Preverimo ustreznost datoteke
-  let pdInfo = xml["_instruction"]?.["PowerDesigner"];
+  let pdInfo = xml["?PowerDesigner"];
   let pdModel = xml["Model"]?.["o:RootObject"]?.["c:Children"]?.["o:Model"];
   if (!pdInfo || !pdModel) throw new ParserError(PARSE_ERROR_MESSAGE.NOT_A_PD_FILE);
 
   return {
-    info: parsePdInfo(pdInfo),
+    info: pdInfo,
     model: parsePdModel(pdModel) 
   }
 };
@@ -57,7 +57,7 @@ const parsePdModel = (pdModel: object) => {
   });
 
   // Seznam pretvorjenih diagramov datoteke
-  let converted = [];
+  let converted: any[] = [];
 
   // START - Pretvorba fizičnih diagramov
   let physicalDiagrams: PDPhysicalDiagram[] = [];
@@ -75,16 +75,6 @@ const parsePdModel = (pdModel: object) => {
   // END - Pretvorba konceptualnih diagramov
 
   return converted
-};
-
-// Pretvori podatke o PowerDesigner v formatu KEY="VALUE" v JS objekt
-const parsePdInfo = (pdInfo: string) => {
-  let infoObj: PdInfo = {};
-  let info = pdInfo.split(/" /g).map((el) => el.split("="));
-  info.forEach(([key, val]) => {
-    infoObj[key] = val.slice(1);
-  });
-  return infoObj;
 };
 
 /*

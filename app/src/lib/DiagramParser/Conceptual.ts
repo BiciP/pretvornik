@@ -1,31 +1,31 @@
 import { getCollectionAsArray } from "../helpers";
 import ParserError from "../ParseError";
-import { RefAttributes } from "../PDTypes";
-import { EntitySymbol, InheritanceLinkSymbol, PDConceptualDiagram, RelationshipSymbol } from "../PDTypes/PDConceptualDiagram";
-import { PDDataItem } from "../PDTypes/PDDataItem";
-import { EntityAttribute, Identifier, IdentifierRef, PDEntityObject } from "../PDTypes/PDEntity";
-import { PDInheritance } from "../PDTypes/PDInheritance";
-import { PDInheritanceLink } from "../PDTypes/PDInheritanceLink";
-import { PDRelationship } from "../PDTypes/PDRelationship";
+import type { RefAttributes } from "../PDTypes";
+import type { EntitySymbol, InheritanceLinkSymbol, PDConceptualDiagram, RelationshipSymbol } from "../PDTypes/PDConceptualDiagram";
+import type { PDDataItem } from "../PDTypes/PDDataItem";
+import type { EntityAttribute, Identifier, PDEntityObject } from "../PDTypes/PDEntity";
+import type { PDInheritance } from "../PDTypes/PDInheritance";
+import type { PDInheritanceLink } from "../PDTypes/PDInheritanceLink";
+import type { PDRelationship } from "../PDTypes/PDRelationship";
 
 export function parseConceptualDiagram(diagram: PDConceptualDiagram, PDObjects: any) {
   // Initialize the PlantUML notation diagram and give it a name
-  let PUMLDiagram = "@startuml " + diagram["a:Name"]._text + "\n\n";
+  let PUMLDiagram = "@startuml " + diagram["a:Name"] + "\n\n";
 
   // Parse entities
   let EntitySymbols: EntitySymbol[] = getCollectionAsArray(diagram["c:Symbols"]["o:EntitySymbol"]);
-  EntitySymbols.forEach((EntitySymbol) => (PUMLDiagram += PDObjects["o:Entity"][EntitySymbol["c:Object"]["o:Entity"]._attributes.Ref] + "\n"));
+  EntitySymbols.forEach((EntitySymbol) => (PUMLDiagram += PDObjects["o:Entity"][EntitySymbol["c:Object"]["o:Entity"]["@_Ref"]] + "\n"));
 
   // Parse relationships
   let RelationshipSymbols: RelationshipSymbol[] = getCollectionAsArray(diagram["c:Symbols"]["o:RelationshipSymbol"]);
   RelationshipSymbols.forEach((RelationshipSymbol) => {
-    PUMLDiagram += PDObjects["o:Relationship"][RelationshipSymbol["c:Object"]["o:Relationship"]._attributes.Ref];
+    PUMLDiagram += PDObjects["o:Relationship"][RelationshipSymbol["c:Object"]["o:Relationship"]["@_Ref"]];
   });
 
   // Parse inheritance links
   let InheritanceLinkSymbols: InheritanceLinkSymbol[] = getCollectionAsArray(diagram["c:Symbols"]["o:InheritanceLinkSymbol"]);
   InheritanceLinkSymbols.forEach((InheritanceLinkSymbol) => {
-    PUMLDiagram += PDObjects["o:InheritanceLink"][InheritanceLinkSymbol["c:Object"]["o:InheritanceLink"]._attributes.Ref];
+    PUMLDiagram += PDObjects["o:InheritanceLink"][InheritanceLinkSymbol["c:Object"]["o:InheritanceLink"]["@_Ref"]];
   });
 
   // Finish the PlnatUML notation
@@ -33,8 +33,8 @@ export function parseConceptualDiagram(diagram: PDConceptualDiagram, PDObjects: 
 
   return {
     diagram: {
-      id: diagram._attributes.Id,
-      name: diagram["a:Name"]._text,
+      id: diagram["@_Id"],
+      name: diagram["a:Name"],
       type: "Conceptual",
     },
     data: PUMLDiagram,
@@ -48,23 +48,23 @@ export function parseEntities(entities: PDEntityObject[], pdModel: object) {
 
   entities.forEach((entity) => {
     // Extract entity Id
-    let entityId = entity._attributes.Id;
+    let entityId = entity["@_Id"];
 
     // PlantUML entity initialization
-    obj[entityId] = `entity "${entity["a:Name"]._text}" as ${entityId} {\n`;
+    obj[entityId] = `entity "${entity["a:Name"]}" as ${entityId} {\n`;
 
     // Get primary identifiers
-    let primaryIdentifiers: IdentifierRef[] = getCollectionAsArray(entity["c:PrimaryIdentifier"]?.["o:Identifier"]);
-    let primaryIdentifiersKeys = primaryIdentifiers.map((pk) => pk._attributes.Ref);
+    let primaryIdentifiers: RefAttributes[] = getCollectionAsArray(entity["c:PrimaryIdentifier"]?.["o:Identifier"]);
+    let primaryIdentifiersKeys = primaryIdentifiers.map((pk) => pk["@_Ref"]);
 
     // Declare identifiers
     let piAttributes = new Set()
     let identifiers: Identifier[] = getCollectionAsArray(entity["c:Identifiers"]?.["o:Identifier"]);
     identifiers.forEach((identifier) => {
       let attributesRefs: RefAttributes[] = getCollectionAsArray(identifier["c:Identifier.Attributes"]?.["o:EntityAttribute"])
-      attributesRefs.forEach(attributeRef => piAttributes.add(attributeRef._attributes.Ref))
-      let isPrimary = primaryIdentifiersKeys.includes(identifier._attributes.Id);
-      obj[entityId] += `\t* ${identifier["a:Name"]._text} ${isPrimary ? "<<pi>>" : ""}\n`;
+      attributesRefs.forEach(attributeRef => piAttributes.add(attributeRef["@_Ref"]))
+      let isPrimary = primaryIdentifiersKeys.includes(identifier["@_Id"]);
+      obj[entityId] += `\t* ${identifier["a:Name"]} ${isPrimary ? "<<pi>>" : ""}\n`;
     });
 
     // Draw the line between identifiers and attributes if there are any identifiers
@@ -73,13 +73,13 @@ export function parseEntities(entities: PDEntityObject[], pdModel: object) {
     // Declare attributes
     let attributes: EntityAttribute[] = getCollectionAsArray(entity["c:Attributes"]?.["o:EntityAttribute"]);
     attributes.forEach((attribute) => {
-      let isIdentifier = piAttributes.has(attribute._attributes.Id)
-      let isMandatory = attribute["a:BaseAttribute.Mandatory"]?._text === "1";
-      let dataItemRef = attribute["c:DataItem"]["o:DataItem"]._attributes.Ref;
-      let dataItem = dataItems.find((item) => item._attributes.Id === dataItemRef);
+      let isIdentifier = piAttributes.has(attribute["@_Id"])
+      let isMandatory = attribute["a:BaseAttribute.Mandatory"] === 1;
+      let dataItemRef = attribute["c:DataItem"]["o:DataItem"]["@_Ref"];
+      let dataItem = dataItems.find((item) => item["@_Id"] === dataItemRef);
       if (dataItem == null) throw new ParserError(`Attribute data item does not exist: Ref[${dataItemRef}]`);
       let dataType = extractDataType(dataItem)
-      let puml = `\t${isMandatory ? "* " : ""}${dataItem["a:Name"]._text}`;
+      let puml = `\t${isMandatory ? "* " : ""}${dataItem["a:Name"]}`;
       if (dataType != null || isIdentifier) {
         puml += ` : `
         if (dataType) puml += `${dataType} `
@@ -101,14 +101,14 @@ export function parseRelationships(relationships: PDRelationship[]) {
 
   relationships.forEach((relationship) => {
     let puml = "";
-    puml += relationship["c:Object1"]["o:Entity"]._attributes.Ref + " ";
+    puml += relationship["c:Object1"]["o:Entity"]["@_Ref"] + " ";
     puml += getCardinality(relationship, 1);
     puml += "--";
     puml += getCardinality(relationship, 2);
-    puml += " " + relationship["c:Object2"]["o:Entity"]._attributes.Ref
-    puml += " : " + relationship["a:Name"]._text
+    puml += " " + relationship["c:Object2"]["o:Entity"]["@_Ref"]
+    puml += " : " + relationship["a:Name"]
     puml += "\n";
-    obj[relationship._attributes.Id] = puml;
+    obj[relationship["@_Id"]] = puml;
   });
 
   return obj;
@@ -121,15 +121,15 @@ export function parseInheritanceLinks(inheritanceLinks: PDInheritanceLink[], pdM
   let Inheritances: PDInheritance[] = getCollectionAsArray(pdModel?.["c:Inheritances"]?.["o:Inheritance"]);
 
   inheritanceLinks.forEach((inheritanceLink) => {
-    let inheritanceId = inheritanceLink["c:Object1"]["o:Inheritance"]._attributes.Ref;
-    let inheritance = Inheritances.find((Inheritance) => Inheritance._attributes.Id === inheritanceId);
+    let inheritanceId = inheritanceLink["c:Object1"]["o:Inheritance"]["@_Ref"];
+    let inheritance = Inheritances.find((Inheritance) => Inheritance["@_Id"] === inheritanceId);
     if (!inheritance) throw new ParserError(`Inheritance '${inheritanceId}' does not exist.`);
-    let puml = inheritance["c:ParentEntity"]["o:Entity"]._attributes.Ref;
+    let puml = inheritance["c:ParentEntity"]["o:Entity"]["@_Ref"];
     puml += " ||--o| ";
-    puml += inheritanceLink["c:Object2"]["o:Entity"]._attributes.Ref;
-    puml += " : " + inheritance["a:Name"]._text
+    puml += inheritanceLink["c:Object2"]["o:Entity"]["@_Ref"];
+    puml += " : " + inheritance["a:Name"]
     puml += "\n"
-    obj[inheritanceLink._attributes.Id] = puml;
+    obj[inheritanceLink["@_Id"]] = puml;
   });
 
   return obj;
@@ -138,9 +138,9 @@ export function parseInheritanceLinks(inheritanceLinks: PDInheritanceLink[], pdM
 // HELPERS
 
 function extractDataType(dataItem: PDDataItem) {
-  let dataType: string = dataItem["a:DataType"]?._text
-  let length: string | undefined = dataItem["a:Length"]?._text
-  let precision: string | undefined = dataItem["a:Precision"]?._text
+  let dataType: string = dataItem["a:DataType"]
+  let length: number | undefined = dataItem["a:Length"]
+  let precision: number | undefined = dataItem["a:Precision"]
 
   if (!dataType) {
     return null
@@ -174,7 +174,7 @@ function getCardinality(relationship: PDRelationship, entity: 1 | 2): string {
     1: "a:Entity1ToEntity2RoleCardinality",
     2: "a:Entity2ToEntity1RoleCardinality",
   };
-  let raw = relationship[keys[entity]]._text;
+  let raw = relationship[keys[entity]];
   let cardinality = cardinalityMap[raw];
   if (!cardinality) throw new ParserError("Invalid cardinality: " + raw);
   return cardinality[entity];

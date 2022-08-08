@@ -1,4 +1,4 @@
-import {IdAttributes, PDObject, PDTextObject, RefAttributes} from "./index";
+import type {IdAttributes, PDObject, PDTextObject, RefAttributes} from "./index";
 
 export interface PDTableSymbol extends IdAttributes {
     "a:ModificationDate": PDTextObject,

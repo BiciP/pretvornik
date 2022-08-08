@@ -5,7 +5,6 @@ import ParserError, { PARSE_ERROR_MESSAGE } from "./ParseError";
 import { PDTableObject } from "./PDTypes/PDTable";
 import { PDReferenceObject } from "./PDTypes/PDReference";
 import { PDPhysicalDiagram } from "./PDTypes/PDPhysicalDiagram";
-// import { writeFileSync } from "fs";
 import { parseConceptualDiagram, parseEntities, parseInheritanceLinks, parseRelationships } from "./DiagramParser/Conceptual";
 import { PDConceptualDiagram } from "./PDTypes/PDConceptualDiagram";
 import { getCollectionAsArray } from "./helpers";

@@ -1,29 +1,17 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import Parser from '../lib/index'
 
-	import Parser from '../../lib/index'
-
-	let reader: FileReader | undefined;
 	let diagrams: any[] = [];
 
-	onMount(() => {
-		if (window.File && window.FileReader && window.FileList && window.Blob) {
-			reader = new FileReader();
-			return true;
-		} else {
-			alert('The File APIs are not fully supported by your browser. Fallback required.');
-			return false;
-		}
-	});
-
 	function readText(filePath: any) {
+		let reader: FileReader = new FileReader()
 		var output: string | ArrayBuffer | undefined | null = '';
 		if (filePath.target?.files && filePath.target?.files[0] && reader) {
 			reader.onload = function (e) {
 				output = e.target?.result;
 				let data = Parser(output);
 				diagrams = [...data.model];
-				// data.model.forEach(model => diagrams.push(model))
+				data.model.forEach(model => diagrams.push(model))
 			};
 			reader.readAsText(filePath.target.files[0]);
 		} else {

@@ -1,4 +1,4 @@
-import {IdAttributes, PDTextObject, RefAttributes} from "./index";
+import type {IdAttributes, PDTextObject, RefAttributes} from "./index";
 
 export interface PDReferenceSymbol extends IdAttributes {
     "a:Rect": PDTextObject,

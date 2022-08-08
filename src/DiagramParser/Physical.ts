@@ -3,7 +3,6 @@ import ParserError from "../ParseError";
 import {PDTableObject, PDTableSymbol} from "../PDTypes/PDTable";
 import {PDReferenceObject, PDReferenceSymbol} from "../PDTypes/PDReference";
 import {PDPhysicalDiagram} from "../PDTypes/PDPhysicalDiagram";
-import * as fs from "fs";
 
 export const parser = (diagram: PDPhysicalDiagram, PDObjects: any) => {
     // Initialize the PlantUML notation diagram and give it a name

@@ -1,7 +1,7 @@
-import {PDObject, PDTextObject} from "./index";
-import {PDReferenceSymbol} from "./PDReference";
-import {PDTableSymbol} from "./PDTable";
-import {PDTextSymbol} from "./PDText";
+import type {PDObject, PDTextObject} from "./index";
+import type {PDReferenceSymbol} from "./PDReference";
+import type {PDTableSymbol} from "./PDTable";
+import type {PDTextSymbol} from "./PDText";
 
 export interface PDPhysicalDiagram extends PDObject {
     "a:CreationDate": PDTextObject,
