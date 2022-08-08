@@ -1,4 +1,4 @@
-import { xml2js } from "xml-js";
+import { xml2js } from "../app/node_modules/xml-js";
 import { parser, parseReferences, parseTables } from "./DiagramParser/Physical";
 import { PdInfo, TableColumn, TableSymbol } from "./types";
 import ParserError, { PARSE_ERROR_MESSAGE } from "./ParseError";
