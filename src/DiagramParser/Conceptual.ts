@@ -79,7 +79,14 @@ export function parseEntities(entities: PDEntityObject[], pdModel: object) {
       let dataItem = dataItems.find((item) => item._attributes.Id === dataItemRef);
       if (dataItem == null) throw new ParserError(`Attribute data item does not exist: Ref[${dataItemRef}]`);
       let dataType = extractDataType(dataItem)
-      obj[entityId] += `\t${isMandatory ? "* " : ""}${dataItem["a:Name"]._text} : ${dataType}${isIdentifier ? " <<pi>>" : ""}\n`;
+      let puml = `\t${isMandatory ? "* " : ""}${dataItem["a:Name"]._text}`;
+      if (dataType != null || isIdentifier) {
+        puml += ` : `
+        if (dataType) puml += `${dataType} `
+        if (isIdentifier) puml += "<<pi>>"
+      }
+      puml += "\n"
+      obj[entityId] += puml
     });
 
     // PlantUML entity finalization
@@ -136,7 +143,7 @@ function extractDataType(dataItem: PDDataItem) {
   let precision: string = dataItem["a:Precision"]?._text
 
   if (!dataType) {
-    return "<<undefined>>"
+    return null
   }
 
   let isDefined = Object.keys(dataTypes)
