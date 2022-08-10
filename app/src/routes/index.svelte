@@ -28,9 +28,10 @@
 <h3>Trenutno podprti modeli</h3>
 <ul>
 	<li>Konceptualni model (.cdm datoteke)</li>
+	<li>Use case diagram (.oom datoteke)</li>
 </ul>
 <p>Izberite PowerDesigner datoteko, ki jo želite pretvoriti v PlantUML notacijo.</p>
-<input type="file" on:change={readText} accept=".cdm" />
+<input type="file" on:change={readText} accept=".cdm,.oom" />
 
 {#each diagrams as { data, diagram, imageUrl }}
 	<div style="border-bottom: 1px solid black;">

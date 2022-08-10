@@ -1,3 +1,10 @@
+export interface PDObjectDefinition extends PDObject {
+	"a:CreationDate": number,
+    "a:Creator": string,
+    "a:ModificationDate": number,
+    "a:Modifier": string,
+}
+
 export interface PDObject extends IdAttributes {
 	'a:ObjectID': string;
 	'a:Name': string;
