@@ -121,7 +121,7 @@ export function parseActors(actors: PDActor[]) {
 	let obj = {};
 
 	actors.forEach((actor) => {
-		obj[actor['@_Id']] = `:${actor['a:Name']}: as ${actor['@_Id']}`;
+		obj[actor['@_Id']] = `actor "${actor['a:Name']}" as ${actor['@_Id']}`;
 	});
 
 	return obj;
@@ -131,7 +131,7 @@ export function parseUseCases(useCases: PDUseCase[]) {
 	let obj = {};
 
 	useCases.forEach((useCase) => {
-		obj[useCase['@_Id']] = `(${useCase['a:Name']}) as ${useCase['@_Id']}`;
+		obj[useCase['@_Id']] = `usecase "${useCase['a:Name']}" as ${useCase['@_Id']}`;
 	});
 
 	return obj;
