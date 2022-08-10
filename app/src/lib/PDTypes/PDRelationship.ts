@@ -7,6 +7,7 @@ export interface PDRelationship extends PDObject {
     "a:Creator": string,
     "a:ModificationDate": number,
     "a:Modifier": string,
+    "a:DependentRole"?: "A" | "B"
     "a:Entity1ToEntity2RoleCardinality": PDCardinality,
     "a:Entity2ToEntity1RoleCardinality": PDCardinality,
     "c:Object1": {

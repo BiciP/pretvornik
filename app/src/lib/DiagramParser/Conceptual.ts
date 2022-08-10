@@ -103,7 +103,7 @@ export function parseRelationships(relationships: PDRelationship[]) {
     let puml = "";
     puml += relationship["c:Object1"]["o:Entity"]["@_Ref"] + " ";
     puml += getCardinality(relationship, 1);
-    puml += "--";
+    puml += relationship["a:DependentRole"] ? ".." : "--";
     puml += getCardinality(relationship, 2);
     puml += " " + relationship["c:Object2"]["o:Entity"]["@_Ref"]
     puml += " : " + relationship["a:Name"]
