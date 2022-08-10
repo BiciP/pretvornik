@@ -11,6 +11,10 @@
 				output = e.target?.result;
 				let data = Parser(output);
 				diagrams = [...data.model];
+				diagrams = diagrams.map(d => ({
+					...d,
+					imageUrl: compress(d.data)
+				}))
 			};
 			reader.readAsText(filePath.target.files[0]);
 		} else {
@@ -28,14 +32,25 @@
 <p>Izberite PowerDesigner datoteko, ki jo želite pretvoriti v PlantUML notacijo.</p>
 <input type="file" on:change={readText} accept=".cdm" />
 
-{#each diagrams as { data, diagram }}
+{#each diagrams as { data, diagram, imageUrl }}
 	<div style="border-bottom: 1px solid black;">
 		<p><b>{diagram.name}</b> - {diagram.type} diagram</p>
 		<pre class="puml-notation">{data}</pre>
+		<div class="text-center">
+			<img class="puml-diagram" src={imageUrl} alt="PlantUML Diagram" />
+		</div>
 	</div>
 {/each}
 
 <style>
+	.text-center {
+		text-align: center;
+	}
+
+	.puml-diagram {
+		max-width: 100%;
+	}
+
 	.puml-notation {
 		background-color: #eeeeee;
 		border-radius: 3px;
