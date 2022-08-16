@@ -31,8 +31,8 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 	);
 	UseCaseSymbols.forEach(
 		(UseCaseSymbol) =>
-			(PUMLDiagram +=
-				'\t' + PDObjects['o:UseCase'][UseCaseSymbol['c:Object']['o:UseCase']['@_Ref']] + '\n')
+		(PUMLDiagram +=
+			'\t' + PDObjects['o:UseCase'][UseCaseSymbol['c:Object']['o:UseCase']['@_Ref']] + '\n')
 	);
 	PUMLDiagram += `}\n\n`;
 
@@ -41,11 +41,13 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 		diagram['c:Symbols']['o:UseCaseAssociationSymbol']
 	);
 	Associations.forEach(
-		(Association) =>
-			(PUMLDiagram +=
-				PDObjects['o:UseCaseAssociation'][
-					Association['c:Object']['o:UseCaseAssociation']['@_Ref']
-				] + '\n')
+		(Association) => {
+			let definition = PDObjects['o:UseCaseAssociation'][
+				Association['c:Object']['o:UseCaseAssociation']['@_Ref']
+			] + '\n'
+			definition.replace('{{ArrowStyle}}', Association['a:ArrowStyle'] === '0' ? '--' : '-->');
+			PUMLDiagram += definition
+		}
 	);
 
 	// parse generalizations
@@ -54,8 +56,8 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 	);
 	Generalizations.forEach(
 		(Gen) =>
-			(PUMLDiagram +=
-				PDObjects['o:Generalization'][Gen['c:Object']['o:Generalization']['@_Ref']] + '\n')
+		(PUMLDiagram +=
+			PDObjects['o:Generalization'][Gen['c:Object']['o:Generalization']['@_Ref']] + '\n')
 	);
 
 	// parse dependencies
@@ -85,9 +87,8 @@ export function parseDependencies(deps: PDDependency[]) {
 	deps.forEach((dep) => {
 		let obj1 = getObjectRef(dep['c:Object1']);
 		let obj2 = getObjectRef(dep['c:Object2']);
-		obj[dep['@_Id']] = `${obj2} ..> ${obj1}${
-			dep['a:Stereotype'] ? ` : <<${dep['a:Stereotype']}>>` : ''
-		}`;
+		obj[dep['@_Id']] = `${obj2} ..> ${obj1}${dep['a:Stereotype'] ? ` : <<${dep['a:Stereotype']}>>` : ''
+			}`;
 	});
 
 	return obj;
@@ -111,7 +112,7 @@ export function parseUseCaseAssociations(useCaseAssociations: PDUseCaseAssociati
 	useCaseAssociations.forEach((assoc) => {
 		let obj1 = getObjectRef(assoc['c:Object1']);
 		let obj2 = getObjectRef(assoc['c:Object2']);
-		obj[assoc['@_Id']] = `${obj1} -- ${obj2}`;
+		obj[assoc['@_Id']] = `${obj1} {{ArrowStyle}} ${obj2}`;
 	});
 
 	return obj;

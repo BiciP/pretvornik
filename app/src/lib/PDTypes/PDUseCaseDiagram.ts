@@ -1,6 +1,7 @@
 import type { IdAttributes, PDObjectDefinition, RefAttributes } from '.';
 
 export interface UseCaseAssociationSymbol extends IdAttributes {
+	'a:ArrowStyle': string;
 	'c:SourceSymbol': {
 		[key: string]: RefAttributes;
 	};
