@@ -45,7 +45,7 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 			let definition = PDObjects['o:UseCaseAssociation'][
 				Association['c:Object']['o:UseCaseAssociation']['@_Ref']
 			] + '\n'
-			definition.replace('{{ArrowStyle}}', Association['a:ArrowStyle'] === '0' ? '--' : '-->');
+			definition = definition.replace('{{ArrowStyle}}', Association['a:ArrowStyle'] === 0 ? '--' : '-->');
 			PUMLDiagram += definition
 		}
 	);
