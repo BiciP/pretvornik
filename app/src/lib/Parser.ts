@@ -14,12 +14,21 @@ import type { PDReferenceObject } from './PDTypes/PDReference';
 import type { PDPhysicalDiagram } from './PDTypes/PDPhysicalDiagram';
 import type { PDConceptualDiagram } from './PDTypes/PDConceptualDiagram';
 import type { PDActor } from './PDTypes/PDActor';
-import { parseActors, parseDependencies, parseGeneralizations, parseUseCaseAssociations, parseUseCaseDiagram, parseUseCases } from './DiagramParser/UseCase';
+import {
+	parseActors,
+	parseDependencies,
+	parseExtendedDependency,
+	parseGeneralizations,
+	parseUseCaseAssociations,
+	parseUseCaseDiagram,
+	parseUseCases
+} from './DiagramParser/UseCase';
 import type { PDUseCase } from './PDTypes/PDUseCase';
 import type { PDUseCaseDiagram } from './PDTypes/PDUseCaseDiagram';
 import type { PDUseCaseAssociation } from './PDTypes/PDUseCaseAssociation';
 import type { PDGeneralization } from './PDTypes/PDGeneralization';
 import type { PDDependency } from './PDTypes/PDDependency';
+import type PDExtendedDependency from './PDTypes/PDExtendedDependency';
 
 // Pretvori XML v JS in inicializira branje diagrama
 export const parseFile = (file: string) => {
@@ -57,8 +66,9 @@ const parsePdModel = (pdModel: object) => {
 		'c:Actors': 'o:Actor',
 		'c:UseCases': 'o:UseCase',
 		'c:UseCaseAssociations': 'o:UseCaseAssociation',
-    'c:Generalizations': 'o:Generalization',
-    'c:Dependencies': 'o:Dependency'
+		'c:Generalizations': 'o:Generalization',
+		'c:Dependencies': 'o:Dependency',
+		'c:ChildTraceabilityLinks': 'o:ExtendedDependency'
 	};
 
 	// this should resolve into an object of objects
@@ -71,6 +81,7 @@ const parsePdModel = (pdModel: object) => {
 		definitions[colObjMap[col]] = PDCollectionResolver(col, pdModel[col], pdModel);
 	});
 
+	console.log(pdModel);
 	// Seznam pretvorjenih diagramov datoteke
 	let converted: any[] = [];
 
@@ -107,21 +118,26 @@ const parsePdModel = (pdModel: object) => {
  * */
 
 const PDCollectionParser = {
-  '': function() {},
+	'': function () {},
 
-  'c:Dependencies': function(col) {
-    let deps: PDDependency[] = [].concat(col['o:Dependency'])
-    return parseDependencies(deps)
-  },
+	'c:ChildTraceabilityLinks': function (col) {
+		let links: PDExtendedDependency[] = [].concat(col['o:ExtendedDependency']);
+		return parseExtendedDependency(links);
+	},
 
-  'c:Generalizations': function(col) {
-    let gens: PDGeneralization[] = [].concat(col['o:Generalization'])
-    return parseGeneralizations(gens)
-  },
+	'c:Dependencies': function (col) {
+		let deps: PDDependency[] = [].concat(col['o:Dependency']);
+		return parseDependencies(deps);
+	},
+
+	'c:Generalizations': function (col) {
+		let gens: PDGeneralization[] = [].concat(col['o:Generalization']);
+		return parseGeneralizations(gens);
+	},
 
 	'c:UseCaseAssociations': function (col) {
 		let assocs: PDUseCaseAssociation[] = [].concat(col['o:UseCaseAssociation']);
-    return parseUseCaseAssociations(assocs)
+		return parseUseCaseAssociations(assocs);
 	},
 
 	'c:Actors': function (col) {
