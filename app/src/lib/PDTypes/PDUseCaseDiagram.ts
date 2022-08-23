@@ -25,28 +25,41 @@ export interface DependencySymbol extends IdAttributes {
 	};
 }
 
-export interface GeneralizationSymbol extends IdAttributes  {
-    'c:SourceSymbol': {
-        [key: string]: RefAttributes;
-    };
-    'c:DestinationSymbol': {
-        [key: string]: RefAttributes;
-    };
-    'c:Object': {
-        'o:Generalization': RefAttributes;
-    };
+export interface GeneralizationSymbol extends IdAttributes {
+	'c:SourceSymbol': {
+		[key: string]: RefAttributes;
+	};
+	'c:DestinationSymbol': {
+		[key: string]: RefAttributes;
+	};
+	'c:Object': {
+		'o:Generalization': RefAttributes;
+	};
 }
 
 export interface ActorSymbol extends IdAttributes {
-    'c:Object': {
-        'o:Actor': RefAttributes;
-    };
+	'c:Object': {
+		'o:Actor': RefAttributes;
+	};
 }
 
-export interface UseCaseSymbol extends IdAttributes  {
-    'c:Object': {
-        'o:UseCase': RefAttributes;
-    };
+export interface UseCaseSymbol extends IdAttributes {
+	'c:Object': {
+		'o:UseCase': RefAttributes;
+	};
+}
+
+export interface ExtendedDependencySymbol extends IdAttributes {
+	'a:ArrowStyle': number;
+	'c:SourceSymbol': {
+		[key: string]: RefAttributes;
+	};
+	'c:DestinationSymbol': {
+		[key: string]: RefAttributes;
+	};
+	'c:Object': {
+		'o:ExtendedDependency': RefAttributes;
+	};
 }
 
 export interface PDUseCaseDiagram extends PDObjectDefinition {
@@ -56,5 +69,6 @@ export interface PDUseCaseDiagram extends PDObjectDefinition {
 		'o:GeneralizationSymbol': GeneralizationSymbol | GeneralizationSymbol[];
 		'o:ActorSymbol': ActorSymbol | ActorSymbol[];
 		'o:UseCaseSymbol': UseCaseSymbol | UseCaseSymbol[];
+		'o:ExtendedDependencySymbol': ExtendedDependencySymbol | ExtendedDependencySymbol[];
 	};
 }
