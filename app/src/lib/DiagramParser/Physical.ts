@@ -1,9 +1,8 @@
 import ParserError from '../ParseError';
-import type { TableColumn, TableKey } from '../types';
-import type { PDTableObject, PDTableSymbol } from '../PDTypes/PDTable';
+import type { PDTableObject, PDTableSymbol, TableColumn, TableKey } from '../PDTypes/PDTable';
 import type { PDReferenceObject, PDReferenceSymbol } from '../PDTypes/PDReference';
 import type { PDPhysicalDiagram } from '../PDTypes/PDPhysicalDiagram';
-import { getCollectionAsArray } from '../helpers';
+import { getCollectionAsArray, parseColor } from '../helpers';
 import type { RefAttributes } from '$lib/PDTypes';
 
 export const parser = (diagram: PDPhysicalDiagram, PDObjects: any) => {
@@ -12,15 +11,15 @@ export const parser = (diagram: PDPhysicalDiagram, PDObjects: any) => {
 
 	// Parse Table symbols
 	let tableSymbols: PDTableSymbol[] = getCollectionAsArray(diagram['c:Symbols']?.['o:TableSymbol']);
-	tableSymbols.forEach(
-		(symbol) => (PUMLDiagram += PDObjects['o:Table'][symbol['c:Object']['o:Table']['@_Ref']] + '\n')
-	);
-
-	function parseColor(color: number | undefined) {
-		if (color == null) return null;
-		let str = color.toString(16);
-		return str.slice(4, 6) + str.slice(2, 4) + str.slice(0, 2);
-	}
+	tableSymbols.forEach((symbol) => {
+        let colorFrom = parseColor(symbol['a:GradientEndColor'])
+        let colorTo = parseColor(symbol['a:FillColor'])
+        let lineColor = parseColor(symbol['a:LineColor']) 
+        let colorDef = `#${colorFrom}/${colorTo};line:${lineColor}`
+        let def = PDObjects['o:Table'][symbol['c:Object']['o:Table']['@_Ref']] + '\n';
+        def = def.replace("{{COLOR}}", colorDef)
+		PUMLDiagram += def
+	});
 
 	// Parse Reference symbols
 	let refSymbols: PDReferenceSymbol[] = getCollectionAsArray(
@@ -29,7 +28,7 @@ export const parser = (diagram: PDPhysicalDiagram, PDObjects: any) => {
 	refSymbols.forEach((symbol) => {
 		let color = parseColor(symbol['a:LineColor']);
 		let puml = PDObjects['o:Reference'][symbol['c:Object']['o:Reference']['@_Ref']] + '\n';
-		puml = puml.replace('{{ARROW}}', `-${color && color !== '00aaaa' ? `[#${color}]` : ''}-|>`);
+		puml = puml.replace('{{ARROW}}', `-${`[#${color}]`}-|>`);
 		PUMLDiagram += puml;
 	});
 
@@ -51,40 +50,40 @@ export function parseTables(tables: PDTableObject[]) {
 	let obj = {};
 
 	tables.forEach((table) => {
-		let columns: TableColumn[] = getCollectionAsArray(table['c:Columns']?.['o:Column']);
-		let keys: TableKey[] = getCollectionAsArray(table['c:Keys']?.['o:Key']);
+		let pks: RefAttributes[] = getCollectionAsArray(table['c:PrimaryKey']['o:Key']);
+		let keys: TableKey[] = getCollectionAsArray(table['c:Keys']['o:Key']);
+		let columns: TableColumn[] = getCollectionAsArray(table['c:Columns']['o:Column']);
 
-		let PUMLKeys = keys
-			.map((pk) => {
-				let keyColumns: RefAttributes[] = getCollectionAsArray(pk['c:Key.Columns']?.['o:Column']);
-				let parsedKeyColumns = keyColumns.map((col) => {
-					let colIndex = columns.findIndex((item) => item['@_Id'] === col['@_Ref']);
-					if (colIndex < 0) {
-						throw new ParserError(`Key column does not exist: Ref[${col['@_Ref']}]`);
-					}
-					let column = columns[colIndex];
-					columns[colIndex].isIdentifier = true;
-					return parseColumnData(column);
-				});
+		let PUML = `entity "${table['a:Name']}" as ${table['@_Id']} {{COLOR}} {\n`;
 
-				// če želimo ključ, ki je sestavljen iz več tujih ključev,
-				// newline zamenjamo z ,
-				return parsedKeyColumns.join('\n    ');
-			})
-			.join('\n    ');
+		// parse primary keys
+		pks.forEach((pk) => {
+			let keyId = pk['@_Ref'];
+			let keyIndex = keys.findIndex((key) => key['@_Id'] === keyId);
+			if (keyIndex < 0) {
+				throw new Error(`Primary key "${pk['@_Ref']}" could not be parsed. Key not found.`);
+			}
+			let key = keys[keyIndex];
+			let keyColsIds: RefAttributes[] = getCollectionAsArray(key['c:Key.Columns']['o:Column']);
+			keyColsIds.map((keyColIdRef) => {
+				let colIndex = columns.findIndex((col) => col?.['@_Id'] === keyColIdRef['@_Ref']);
+				if (colIndex < 0) {
+					throw new Error(
+						`Primary key "${pk['@_Ref']}" could not be parsed. Key column not found.`
+					);
+				}
+				console.log(columns[colIndex]);
+				columns[colIndex].isPrimary = true;
+			});
+		});
 
-		const getPUMLColumns = (columns: TableColumn[]) =>
-			columns
-				.filter((col) => !col.isIdentifier)
-				.map((col) => parseColumnData(col))
-				.join('\n    ');
+		columns.filter((col) => col.isPrimary).forEach((col) => (PUML += parseColumnData(col)));
+		PUML += '\t---\n';
+		columns.filter((col) => !col.isPrimary).forEach((col) => (PUML += parseColumnData(col)));
 
-		obj[table['@_Id']] = `entity "${table['a:Name']}" as ${table['@_Id']} {
-    ${PUMLKeys}
-    --
-    ${getPUMLColumns(columns)}
-}
-`;
+		PUML += `}\n`;
+
+		obj[table['@_Id']] = PUML;
 	});
 
 	return obj;
@@ -92,12 +91,12 @@ export function parseTables(tables: PDTableObject[]) {
 
 export function parseReferences(references: PDReferenceObject[]) {
 	let obj = {};
-	let cardinalityMap = {
-		'0..1': '<|--',
-		'0..*': '<|--',
-		'1..1': '<|--',
-		'1..*': '<|--'
-	};
+	// let cardinalityMap = {
+	// 	'0..1': '<|--',
+	// 	'0..*': '<|--',
+	// 	'1..1': '<|--',
+	// 	'1..*': '<|--'
+	// };
 
 	references.forEach((ref) => {
 		let parent = ref['c:ParentTable']['o:Table']['@_Ref'];
@@ -107,7 +106,7 @@ export function parseReferences(references: PDReferenceObject[]) {
 		let code = ref['a:Code'];
 		// let cardinality = cardinalityMap[ref['a:Cardinality']];
 
-		obj[ref['@_Id']] = `${child}${childRole ? ` "${childRole}" ` : ' '}{{ARROW}}${
+		obj[ref['@_Id']] = `${child}${childRole ? ` "${childRole}" ` : ' '} {{ARROW}} ${
 			parentRole ? ` "${parentRole}" ` : ' '
 		}${parent}${code ? ` : ${code}` : ''}`;
 	});
@@ -120,5 +119,11 @@ export function parseReferences(references: PDReferenceObject[]) {
  * */
 
 // Pretvori PowerDesigner TableColumn v PlantUML notacijo
-const parseColumnData = (col: TableColumn) =>
-	`${col['a:Mandatory'] === '1' ? '*' : ''} ${col['a:Name']}: ${col['a:DataType']}`;
+const parseColumnData = (col: TableColumn) => {
+	let identifiers = [];
+	if (col.isPrimary) identifiers.push('pk');
+	if (col['a:AutoMigrated'] === 1) identifiers.push('fk');
+	return `\t${col['a:Column.Mandatory'] === 1 ? '*' : ''} ${col['a:Name']}: ${col['a:DataType']} ${
+		identifiers.length ? `<${identifiers.join(',')}>` : ''
+	}\n`;
+};

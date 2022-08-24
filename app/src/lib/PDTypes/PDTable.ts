@@ -1,6 +1,8 @@
 import type { IdAttributes, PDObject, RefAttributes } from './index';
 
 export interface PDTableSymbol extends IdAttributes {
+	'a:LineColor': number;
+	'a:GradientEndColor': number;
 	'a:FillColor': number;
 	'c:Object': {
 		'o:Table': RefAttributes;
@@ -8,13 +10,16 @@ export interface PDTableSymbol extends IdAttributes {
 }
 
 export interface TableColumn extends PDObject {
+	isPrimary?: boolean; // custom prop
 	'a:DataType': string;
-	'a:Mandatory': string;
+	'a:Column.Mandatory'?: 0 | 1;
+	isIdentifier?: true;
+	'a:AutoMigrated'?: 1;
 }
 
 export interface TableKey extends PDObject {
 	'c:Key.Columns': {
-		'o:Column': RefAttributes;
+		'o:Column': RefAttributes | RefAttributes[];
 	};
 }
 

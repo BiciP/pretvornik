@@ -22,13 +22,7 @@ interface PDObject extends PDIdObject {
     "a:Code": string,
 }
 
-export interface TableColumn extends PDObject {
-    "a:DataType": string,
-    "a:Mandatory"?: "1" | "0",
-    "isIdentifier"? : Boolean // custom property, ki pove ali je ključ
-}
-
-export interface TableKey extends PDObject {
+export interface TableKeySymbol extends PDObject {
     "c:Key.Columns": {
         "o:Column": RefAttributes
     }
@@ -52,10 +46,10 @@ interface TableIndex extends PDObject {
 
 export interface TableSymbol extends PDObject {
     "c:Columns": {
-        "o:Column": TableColumn | TableColumn[]
+        "o:Column": undefined // todo
     },
     "c:Keys": {
-        "o:Key": TableKey | TableKey[]
+        "o:Key": TableKeySymbol | TableKeySymbol[]
     },
     "c:Indexes": {
         "o:Index": TableIndex | TableIndex[]
