@@ -58,8 +58,8 @@ const parsePdModel = (pdModel: object) => {
 	// V prihodje se bomo po pretvorjenih objektih sklicevali
 	// po objektu (o:XXX) in ne po collectionu (c:XXX)
 	let colObjMap = {
-		'c:Tables': 'o:Table',
 		'c:References': 'o:Reference',
+		'c:Tables': 'o:Table',
 		'c:Entities': 'o:Entity',
 		'c:Relationships': 'o:Relationship',
 		'c:InheritanceLinks': 'o:InheritanceLink',
@@ -150,9 +150,9 @@ const PDCollectionParser = {
 		return parseUseCases(useCases);
 	},
 
-	'c:Tables': function (col) {
+	'c:Tables': function (col, pdModel) {
 		let tables: PDTableObject[] = [].concat(col['o:Table']);
-		return parseTables(tables);
+		return parseTables(tables, pdModel);
 	},
 
 	'c:References': function (col) {

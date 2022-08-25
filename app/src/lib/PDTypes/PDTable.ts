@@ -10,6 +10,7 @@ export interface PDTableSymbol extends IdAttributes {
 }
 
 export interface TableColumn extends PDObject {
+    foreignKey?: number;
 	isPrimary?: boolean; // custom prop
 	'a:DataType': string;
 	'a:Column.Mandatory'?: 0 | 1;
