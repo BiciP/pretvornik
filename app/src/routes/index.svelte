@@ -25,11 +25,12 @@
 </script>
 
 <h1>Pretvornik PowerDesigner v PlantUML notacijo</h1>
-<h3>Trenutno podprti modeli</h3>
+<h3>Podprti modeli:</h3>
 <ul>
 	<li>Konceptualni model (.cdm datoteke)</li>
 	<li>Use case diagram (.oom datoteke)</li>
 	<li>Fizični & logični diagram (.pdm datoteke)</li>
+	<li>Razredni diagram (.oom datoteke)</li>
 </ul>
 <p>Izberite PowerDesigner datoteko, ki jo želite pretvoriti v PlantUML notacijo.</p>
 <input type="file" on:change={readText} accept=".cdm,.oom,.pdm" />

@@ -57,28 +57,30 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 	let Generalizations: GeneralizationSymbol[] = getCollectionAsArray(
 		diagram['c:Symbols']['o:GeneralizationSymbol']
 	);
-	Generalizations.forEach(
-		(Gen) =>
-			(PUMLDiagram +=
-				PDObjects['o:Generalization'][Gen['c:Object']['o:Generalization']['@_Ref']] + '\n')
-	);
+	Generalizations.forEach((Gen) => {
+		let def = PDObjects['o:Generalization'][Gen['c:Object']['o:Generalization']['@_Ref']];
+		def = def.replace('{{ARROW}}', '--|>');
+		PUMLDiagram += def;
+	});
 
 	// parse dependencies
 	let Dependencies: DependencySymbol[] = getCollectionAsArray(
 		diagram['c:Symbols']['o:DependencySymbol']
 	);
-	Dependencies.forEach(
-		(Dep) =>
-			(PUMLDiagram += PDObjects['o:Dependency'][Dep['c:Object']['o:Dependency']['@_Ref']] + '\n')
-	);
+	Dependencies.forEach((Dep) => {
+		let def = PDObjects['o:Dependency'][Dep['c:Object']['o:Dependency']['@_Ref']];
+		def = def.replace('{{ARROW}}', '..>');
+		PUMLDiagram += def;
+	});
 
 	// parse child tracebility links
 	let Extended: ExtendedDependencySymbol[] = getCollectionAsArray(
 		diagram['c:Symbols']['o:ExtendedDependencySymbol']
 	);
 	Extended.forEach((Dep) => {
-		PUMLDiagram +=
-			PDObjects['o:ExtendedDependency'][Dep['c:Object']['o:ExtendedDependency']['@_Ref']] + '\n';
+		let def = PDObjects['o:ExtendedDependency'][Dep['c:Object']['o:ExtendedDependency']['@_Ref']];
+		def = def.replace('{{ARROW}}', '..>')
+		PUMLDiagram += def;
 	});
 
 	PUMLDiagram += '\n@enduml';
@@ -99,9 +101,9 @@ export function parseDependencies(deps: PDDependency[]) {
 	deps.forEach((dep) => {
 		let obj1 = getObjectRef(dep['c:Object1']);
 		let obj2 = getObjectRef(dep['c:Object2']);
-		obj[dep['@_Id']] = `${obj2} ..> ${obj1}${
+		obj[dep['@_Id']] = `${obj2} {{ARROW}} ${obj1}${
 			dep['a:Stereotype'] ? ` : <<${dep['a:Stereotype']}>>` : ''
-		}`;
+		}\n`;
 	});
 
 	return obj;
@@ -113,7 +115,7 @@ export function parseGeneralizations(generalizations: PDGeneralization[]) {
 	generalizations.forEach((gen) => {
 		let obj1 = getObjectRef(gen['c:Object1']);
 		let obj2 = getObjectRef(gen['c:Object2']);
-		obj[gen['@_Id']] = `${obj2} --|> ${obj1}`;
+		obj[gen['@_Id']] = `${obj2} {{ARROW}} ${obj1}\n`;
 	});
 
 	return obj;
@@ -138,7 +140,7 @@ export function parseExtendedDependency(extendedDependencies: PDExtendedDependen
 		let obj1 = getObjectRef(dep['c:Object1']);
 		let obj2 = getObjectRef(dep['c:Object2']);
 		let ster = dep['a:Stereotype'];
-		obj[dep['@_Id']] = `${obj1} <.. ${obj2}${ster ? ' : <<' + ster + '>>' : ''}`;
+		obj[dep['@_Id']] = `${obj2} {{ARROW}} ${obj1}${ster ? ' : <<' + ster + '>>' : ''}\n`;
 	});
 
 	return obj;

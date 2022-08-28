@@ -14,6 +14,7 @@ export interface UseCaseAssociationSymbol extends IdAttributes {
 }
 
 export interface DependencySymbol extends IdAttributes {
+	'a:LineColor': number;
 	'c:SourceSymbol': {
 		[key: string]: RefAttributes;
 	};
@@ -51,6 +52,7 @@ export interface UseCaseSymbol extends IdAttributes {
 
 export interface ExtendedDependencySymbol extends IdAttributes {
 	'a:ArrowStyle': number;
+	'a:LineColor': number;
 	'c:SourceSymbol': {
 		[key: string]: RefAttributes;
 	};

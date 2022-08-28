@@ -29,6 +29,21 @@ import type { PDUseCaseAssociation } from './PDTypes/PDUseCaseAssociation';
 import type { PDGeneralization } from './PDTypes/PDGeneralization';
 import type { PDDependency } from './PDTypes/PDDependency';
 import type PDExtendedDependency from './PDTypes/PDExtendedDependency';
+import type { PDClass } from './PDTypes/ClassDiagram/PDClass';
+import {
+	parse,
+	parseAssociations,
+	parseClasses,
+	parseInterfaces,
+	parseRealizations,
+	parseRequireLinks
+} from './DiagramParser/Class';
+import type { PDClassDiagram } from './PDTypes/ClassDiagram/PDClassDiagram';
+import type { PDAssociation } from './PDTypes/ClassDiagram/PDAssociation';
+import type { PDRealization } from './PDTypes/ClassDiagram/PDRealization';
+import type { PDInterface } from './PDTypes/ClassDiagram/PDInterface';
+import type { PDRequireLink } from './PDTypes/ClassDiagram/PDRequireLink';
+import type { PDPackage } from './PDTypes/ClassDiagram/PDPackage';
 
 // Pretvori XML v JS in inicializira branje diagrama
 export const parseFile = (file: string) => {
@@ -49,11 +64,11 @@ export const parseFile = (file: string) => {
 // Pretvori diagrame v PlantUML notacijo
 // najprej pretvorimo vse objekte v PlantUML notacijo in si zapišemo
 // nato začnemo s pretvorbo diagramov
-const parsePdModel = (pdModel: object) => {
+const parsePdModel = (pdModel: object, isPackage = false) => {
 	// writeFileSync("json.json", JSON.stringify(pdModel));
 	// PlantUML definicije PowerDesigner objektov
 	let definitions = {};
-	console.log(pdModel);
+	// console.log(pdModel);
 
 	// V prihodje se bomo po pretvorjenih objektih sklicevali
 	// po objektu (o:XXX) in ne po collectionu (c:XXX)
@@ -68,7 +83,13 @@ const parsePdModel = (pdModel: object) => {
 		'c:UseCaseAssociations': 'o:UseCaseAssociation',
 		'c:Generalizations': 'o:Generalization',
 		'c:Dependencies': 'o:Dependency',
-		'c:ChildTraceabilityLinks': 'o:ExtendedDependency'
+		'c:ChildTraceabilityLinks': 'o:ExtendedDependency',
+		'c:Classes': 'o:Class',
+		'c:Associations': 'o:Association',
+		'c:Realizations': 'o:Realization',
+		'c:Interfaces': 'o:Interface',
+		'c:RequireLinks': 'o:RequireLink',
+		'c:Packages': 'o:Package'
 	};
 
 	// this should resolve into an object of objects
@@ -81,7 +102,7 @@ const parsePdModel = (pdModel: object) => {
 		definitions[colObjMap[col]] = PDCollectionResolver(col, pdModel[col], pdModel);
 	});
 
-	console.log(pdModel);
+	// console.log(pdModel);
 	// Seznam pretvorjenih diagramov datoteke
 	let converted: any[] = [];
 
@@ -110,6 +131,14 @@ const parsePdModel = (pdModel: object) => {
 	useCaseDiagrams.forEach((diagram) => converted.push(useCaseParserResolver(diagram)));
 	// END - Use Case
 
+	// START - Class diagram
+	let classDiagrams: PDClassDiagram[] = getCollectionAsArray(
+		pdModel['c:ClassDiagrams']?.['o:ClassDiagram']
+	);
+	let classParserResolver = (diagram) => parse(diagram, definitions, isPackage ? pdModel['@_Id'] : false);
+	classDiagrams.forEach((d) => isPackage ? converted = classParserResolver(d) : converted.push(classParserResolver(d)));
+	// END - Class diagram
+
 	return converted;
 };
 
@@ -119,6 +148,38 @@ const parsePdModel = (pdModel: object) => {
 
 const PDCollectionParser = {
 	'': function () {},
+
+	'c:Packages': function (col) {
+		let obj = {};
+		let packages: PDPackage[] = [].concat(col['o:Package']);
+		packages.forEach((p) => (obj[p['@_Id']] = parsePdModel(p, true)));
+		return obj;
+	},
+
+	'c:RequireLinks': function (col) {
+		let links: PDRequireLink[] = [].concat(col['o:RequireLink']);
+		return parseRequireLinks(links);
+	},
+
+	'c:Interfaces': function (col) {
+		let ints: PDInterface[] = [].concat(col['o:Interface']);
+		return parseInterfaces(ints);
+	},
+
+	'c:Realizations': function (col) {
+		let reals: PDRealization[] = [].concat(col['o:Realization']);
+		return parseRealizations(reals);
+	},
+
+	'c:Associations': function (col) {
+		let assocs: PDAssociation[] = [].concat(col['o:Association']);
+		return parseAssociations(assocs);
+	},
+
+	'c:Classes': function (col) {
+		let classes: PDClass[] = [].concat(col['o:Class']);
+		return parseClasses(classes);
+	},
 
 	'c:ChildTraceabilityLinks': function (col) {
 		let links: PDExtendedDependency[] = [].concat(col['o:ExtendedDependency']);
