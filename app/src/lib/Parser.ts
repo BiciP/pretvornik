@@ -91,6 +91,7 @@ const parsePdModel = (pdModel: object, isPackage = false) => {
 		'c:RequireLinks': 'o:RequireLink',
 		'c:Packages': 'o:Package'
 	};
+	console.log(pdModel);
 
 	// this should resolve into an object of objects
 	// { "c:Tables": { o1: PUMLEntity, ... }, "c:References": { o2: PUMLEntity } }
@@ -102,7 +103,6 @@ const parsePdModel = (pdModel: object, isPackage = false) => {
 		definitions[colObjMap[col]] = PDCollectionResolver(col, pdModel[col], pdModel);
 	});
 
-	// console.log(pdModel);
 	// Seznam pretvorjenih diagramov datoteke
 	let converted: any[] = [];
 
@@ -151,88 +151,88 @@ const PDCollectionParser = {
 
 	'c:Packages': function (col) {
 		let obj = {};
-		let packages: PDPackage[] = [].concat(col['o:Package']);
+		let packages: PDPackage[] = getCollectionAsArray(col?.['o:Package']);
 		packages.forEach((p) => (obj[p['@_Id']] = parsePdModel(p, true)));
 		return obj;
 	},
 
 	'c:RequireLinks': function (col) {
-		let links: PDRequireLink[] = [].concat(col['o:RequireLink']);
+		let links: PDRequireLink[] = getCollectionAsArray(col?.['o:RequireLink']);
 		return parseRequireLinks(links);
 	},
 
 	'c:Interfaces': function (col) {
-		let ints: PDInterface[] = [].concat(col['o:Interface']);
+		let ints: PDInterface[] = getCollectionAsArray(col?.['o:Interface']);
 		return parseInterfaces(ints);
 	},
 
 	'c:Realizations': function (col) {
-		let reals: PDRealization[] = [].concat(col['o:Realization']);
+		let reals: PDRealization[] = getCollectionAsArray(col?.['o:Realization']);
 		return parseRealizations(reals);
 	},
 
 	'c:Associations': function (col) {
-		let assocs: PDAssociation[] = [].concat(col['o:Association']);
+		let assocs: PDAssociation[] = getCollectionAsArray(col?.['o:Association']);
 		return parseAssociations(assocs);
 	},
 
 	'c:Classes': function (col) {
-		let classes: PDClass[] = [].concat(col['o:Class']);
+		let classes: PDClass[] = getCollectionAsArray(col?.['o:Class']);
 		return parseClasses(classes);
 	},
 
 	'c:ChildTraceabilityLinks': function (col) {
-		let links: PDExtendedDependency[] = [].concat(col['o:ExtendedDependency']);
+		let links: PDExtendedDependency[] = getCollectionAsArray(col?.['o:ExtendedDependency']);
 		return parseExtendedDependency(links);
 	},
 
 	'c:Dependencies': function (col) {
-		let deps: PDDependency[] = [].concat(col['o:Dependency']);
+		let deps: PDDependency[] = getCollectionAsArray(col?.['o:Dependency']);
 		return parseDependencies(deps);
 	},
 
 	'c:Generalizations': function (col) {
-		let gens: PDGeneralization[] = [].concat(col['o:Generalization']);
+		let gens: PDGeneralization[] = getCollectionAsArray(col?.['o:Generalization']);
 		return parseGeneralizations(gens);
 	},
 
 	'c:UseCaseAssociations': function (col) {
-		let assocs: PDUseCaseAssociation[] = [].concat(col['o:UseCaseAssociation']);
+		let assocs: PDUseCaseAssociation[] = getCollectionAsArray(col?.['o:UseCaseAssociation']);
 		return parseUseCaseAssociations(assocs);
 	},
 
 	'c:Actors': function (col) {
-		let actors: PDActor[] = [].concat(col['o:Actor']);
+		let actors: PDActor[] = getCollectionAsArray(col?.['o:Actor']);
 		return parseActors(actors);
 	},
 
 	'c:UseCases': function (col) {
-		let useCases: PDUseCase[] = [].concat(col['o:UseCase']);
+		let useCases: PDUseCase[] = getCollectionAsArray(col?.['o:UseCase']);
 		return parseUseCases(useCases);
 	},
 
 	'c:Tables': function (col, pdModel) {
-		let tables: PDTableObject[] = [].concat(col['o:Table']);
+		let tables: PDTableObject[] = getCollectionAsArray(col?.['o:Table']);
 		return parseTables(tables, pdModel);
 	},
 
 	'c:References': function (col) {
-		let references: PDReferenceObject[] = [].concat(col['o:Reference']);
+		let references: PDReferenceObject[] = getCollectionAsArray(col?.['o:Reference']);
 		return parseReferences(references);
 	},
 
 	'c:Entities': function (col, pdModel) {
-		let entities = [].concat(col['o:Entity']);
+		let entities = getCollectionAsArray(col?.['o:Entity']);
 		return parseEntities(entities, pdModel);
 	},
 
 	'c:Relationships': function (col) {
-		let relationships = [].concat(col['o:Relationship']);
+		let relationships = getCollectionAsArray(col?.['o:Relationship']);
 		return parseRelationships(relationships);
 	},
 
 	'c:InheritanceLinks': function (col, pdModel) {
-		let inheritanceLinks = [].concat(col['o:InheritanceLink']);
+		let inheritanceLinks = getCollectionAsArray(col?.['o:InheritanceLink']);
 		return parseInheritanceLinks(inheritanceLinks, pdModel);
 	},
 
