@@ -91,7 +91,7 @@ const parsePdModel = (pdModel: object, isPackage = false) => {
 		'c:RequireLinks': 'o:RequireLink',
 		'c:Packages': 'o:Package'
 	};
-	console.log(pdModel);
+	// console.log(pdModel);
 
 	// this should resolve into an object of objects
 	// { "c:Tables": { o1: PUMLEntity, ... }, "c:References": { o2: PUMLEntity } }

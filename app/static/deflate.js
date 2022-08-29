@@ -66,6 +66,5 @@ function done_deflating(e) {
 
 function compress(s) {
 	s = unescape(encodeURIComponent(s));
-	console.log(s)
 	return done_deflating({ data: deflate(s) });
 }

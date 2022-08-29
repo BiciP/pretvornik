@@ -127,7 +127,7 @@ export function parseUseCaseAssociations(useCaseAssociations: PDUseCaseAssociati
 	useCaseAssociations.forEach((assoc) => {
 		let obj1 = getObjectRef(assoc['c:Object1']);
 		let obj2 = getObjectRef(assoc['c:Object2']);
-		obj[assoc['@_Id']] = `${obj1} {{ArrowStyle}} ${obj2}`;
+		obj[assoc['@_Id']] = `${obj2} {{ArrowStyle}} ${obj1}`;
 	});
 
 	return obj;

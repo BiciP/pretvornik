@@ -328,7 +328,6 @@ export function parseInterfaces(interfaces: PDInterface[]) {
 
 	interfaces.forEach((int) => parseInterface(int));
 
-	console.log(obj);
 	return obj;
 }
 
