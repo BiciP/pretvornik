@@ -17,7 +17,7 @@ import type {
 } from '$lib/PDTypes/PDUseCaseDiagram';
 
 export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object) {
-	let PUMLDiagram = '@startuml ' + diagram['a:Name'] + '\n\n';
+	let PUMLDiagram = '@startuml ' + diagram['a:Name'] + '\nleft to right direction\n\n';
 
 	// parse actors
 	let ActorSymbols: ActorSymbol[] = getCollectionAsArray(diagram['c:Symbols']['o:ActorSymbol']);
