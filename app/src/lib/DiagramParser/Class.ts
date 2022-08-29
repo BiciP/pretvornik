@@ -44,6 +44,7 @@ export function parse(diagram: PDClassDiagram, PDObjects: any, packageId = false
 		let lineColor = parseColor(Package['a:LineColor']) || parseColor(11711154);
 		let colorDef = `#${colorFrom}/${colorTo};line:${lineColor}`;
 		let def = PDObjects['o:Package'][ref];
+		if (!def) return
 		def = def.replace('{{COLOR}}', colorDef);
 		def = def.replace('\n{{END}}', '{{END}}');
         def = def.replaceAll('\n', '\n\t')

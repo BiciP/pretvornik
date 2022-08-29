@@ -1,26 +1,56 @@
 <script lang="ts">
-	import Parser from '../lib/index'
+	import DiagramItem from '../components/DiagramItem.svelte';
+	import Parser, { getDiagramList, parseDiagram } from '../lib/index';
 
 	let diagrams: any[] = [];
+	let pdModel: any;
+	let diagramList: any[] = [];
 
 	function readText(filePath: any) {
-		let reader: FileReader = new FileReader()
+		diagrams = [];
+		let reader: FileReader = new FileReader();
 		var output: string | ArrayBuffer | undefined | null = '';
 		if (filePath.target?.files && filePath.target?.files[0] && reader) {
 			reader.onload = function (e) {
 				output = e.target?.result;
-				let data = Parser(output);
-				diagrams = [...data.model];
-				diagrams = diagrams.map(d => ({
-					...d,
-					imageUrl: compress(d.data)
-				}))
+				let { model, list } = getDiagramList(output);
+				diagramList = list;
+				pdModel = model;
 			};
 			reader.readAsText(filePath.target.files[0]);
 		} else {
 			return false;
 		}
 		return true;
+	}
+
+	function findDiagram(list, id) {
+		let found;
+		list.forEach((item) => {
+			if (item['a:ObjectID'] === id) found = item;
+			if (item.children) {
+				let deepFound = findDiagram(item.children, id);
+				if (deepFound) found = deepFound;
+			}
+		});
+		return found;
+	}
+
+	function handleSubmit(e) {
+		e.preventDefault();
+
+		let form = new FormData(e.target);
+		let diagramId = form.get('diagram');
+
+		if (!diagramId) return;
+		let diagram = findDiagram(diagramList, diagramId);
+
+		let model = parseDiagram(diagram.parent, diagram);
+		model = {
+			...model,
+			imageUrl: compress(model.data)
+		};
+		diagrams = [model];
 	}
 </script>
 
@@ -34,6 +64,15 @@
 </ul>
 <p>Izberite PowerDesigner datoteko, ki jo želite pretvoriti v PlantUML notacijo.</p>
 <input type="file" on:change={readText} accept=".cdm,.oom,.pdm" />
+
+{#if diagramList.length}
+	<form on:submit={handleSubmit}>
+		{#each diagramList as diagram}
+			<DiagramItem {diagram} />
+		{/each}
+		<input type="submit" />
+	</form>
+{/if}
 
 {#each diagrams as { data, diagram, imageUrl }}
 	<div style="border-bottom: 1px solid black;">

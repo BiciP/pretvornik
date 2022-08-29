@@ -20,7 +20,7 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 	let PUMLDiagram = '@startuml ' + diagram['a:Name'] + '\nleft to right direction\n\n';
 
 	// parse actors
-	let ActorSymbols: ActorSymbol[] = getCollectionAsArray(diagram['c:Symbols']['o:ActorSymbol']);
+	let ActorSymbols: ActorSymbol[] = getCollectionAsArray(diagram['c:Symbols']?.['o:ActorSymbol']);
 	ActorSymbols.forEach(
 		(ActorSymbol) =>
 			(PUMLDiagram += PDObjects['o:Actor'][ActorSymbol['c:Object']['o:Actor']['@_Ref']] + '\n')
@@ -29,7 +29,7 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 	// parse use cases
 	PUMLDiagram += `\nrectangle "${diagram['a:Name']}" {\n`;
 	let UseCaseSymbols: UseCaseSymbol[] = getCollectionAsArray(
-		diagram['c:Symbols']['o:UseCaseSymbol']
+		diagram['c:Symbols']?.['o:UseCaseSymbol']
 	);
 	UseCaseSymbols.forEach(
 		(UseCaseSymbol) =>
@@ -40,7 +40,7 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 
 	// parse use case associations
 	let Associations: UseCaseAssociationSymbol[] = getCollectionAsArray(
-		diagram['c:Symbols']['o:UseCaseAssociationSymbol']
+		diagram['c:Symbols']?.['o:UseCaseAssociationSymbol']
 	);
 	Associations.forEach((Association) => {
 		let definition =
@@ -55,7 +55,7 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 
 	// parse generalizations
 	let Generalizations: GeneralizationSymbol[] = getCollectionAsArray(
-		diagram['c:Symbols']['o:GeneralizationSymbol']
+		diagram['c:Symbols']?.['o:GeneralizationSymbol']
 	);
 	Generalizations.forEach((Gen) => {
 		let def = PDObjects['o:Generalization'][Gen['c:Object']['o:Generalization']['@_Ref']];
@@ -65,7 +65,7 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 
 	// parse dependencies
 	let Dependencies: DependencySymbol[] = getCollectionAsArray(
-		diagram['c:Symbols']['o:DependencySymbol']
+		diagram['c:Symbols']?.['o:DependencySymbol']
 	);
 	Dependencies.forEach((Dep) => {
 		let def = PDObjects['o:Dependency'][Dep['c:Object']['o:Dependency']['@_Ref']];
@@ -75,7 +75,7 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 
 	// parse child tracebility links
 	let Extended: ExtendedDependencySymbol[] = getCollectionAsArray(
-		diagram['c:Symbols']['o:ExtendedDependencySymbol']
+		diagram['c:Symbols']?.['o:ExtendedDependencySymbol']
 	);
 	Extended.forEach((Dep) => {
 		let def = PDObjects['o:ExtendedDependency'][Dep['c:Object']['o:ExtendedDependency']['@_Ref']];

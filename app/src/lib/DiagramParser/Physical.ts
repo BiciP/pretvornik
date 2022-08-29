@@ -87,6 +87,7 @@ export function parseTables(tables: PDTableObject[], model: null) {
 		fks.forEach((fkObj, i) => {
             fkParents.add(fkObj.parentRef)
             let column = columns.find(col => col['@_Id'] === fkObj.obj2)
+			if (!column) return
             column.foreignKey = fkParents.size
 		});
 

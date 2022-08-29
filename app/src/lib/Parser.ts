@@ -46,7 +46,7 @@ import type { PDRequireLink } from './PDTypes/ClassDiagram/PDRequireLink';
 import type { PDPackage } from './PDTypes/ClassDiagram/PDPackage';
 
 // Pretvori XML v JS in inicializira branje diagrama
-export const parseFile = (file: string) => {
+export const parseFile = (file: string, returnType: 'PARSE' | 'COL_LIST' = 'PARSE') => {
 	let parser = new XMLParser({ ignoreAttributes: false });
 	let xml = parser.parse(file);
 
@@ -55,16 +55,48 @@ export const parseFile = (file: string) => {
 	let pdModel = xml['Model']?.['o:RootObject']?.['c:Children']?.['o:Model'];
 	if (!pdInfo || !pdModel) throw new ParserError(PARSE_ERROR_MESSAGE.NOT_A_PD_FILE);
 
+	if (returnType === 'COL_LIST') {
+		return {
+			model: pdModel,
+			list: getCollectionList(pdModel)
+		};
+	}
+
 	return {
 		info: pdInfo,
-		model: parsePdModel(pdModel)
+		model: parsePdModel(pdModel, null)
 	};
+};
+
+const getCollectionList = (pdModel: object) => {
+	let colMap = {
+		'c:Packages': 'o:Package',
+		'c:ClassDiagrams': 'o:ClassDiagram',
+		'c:UseCaseDiagrams': 'o:UseCaseDiagram',
+		'c:PhysicalDiagrams': 'o:PhysicalDiagram',
+		'c:ConceptualDiagrams': 'o:ConceptualDiagram'
+	};
+
+	let list = [];
+	Object.entries(colMap).forEach(([key, val]) => {
+		let cols = getCollectionAsArray(pdModel[key]?.[val]);
+		cols.forEach((col) => {
+			col.type = val;
+			if (val === 'o:Package') {
+				col.children = getCollectionList(col);
+			} else {
+				col.parent = pdModel;
+			}
+			list.push(col);
+		});
+	});
+	return list;
 };
 
 // Pretvori diagrame v PlantUML notacijo
 // najprej pretvorimo vse objekte v PlantUML notacijo in si zapišemo
 // nato začnemo s pretvorbo diagramov
-const parsePdModel = (pdModel: object, isPackage = false) => {
+export const parsePdModel = (pdModel: object, diagram: any, isPackage = false) => {
 	// writeFileSync("json.json", JSON.stringify(pdModel));
 	// PlantUML definicije PowerDesigner objektov
 	let definitions = {};
@@ -91,7 +123,6 @@ const parsePdModel = (pdModel: object, isPackage = false) => {
 		'c:RequireLinks': 'o:RequireLink',
 		'c:Packages': 'o:Package'
 	};
-	// console.log(pdModel);
 
 	// this should resolve into an object of objects
 	// { "c:Tables": { o1: PUMLEntity, ... }, "c:References": { o2: PUMLEntity } }
@@ -103,13 +134,34 @@ const parsePdModel = (pdModel: object, isPackage = false) => {
 		definitions[colObjMap[col]] = PDCollectionResolver(col, pdModel[col], pdModel);
 	});
 
+	if (isPackage) {
+		// START - Class diagram
+		let converted = []
+		let classDiagrams: PDClassDiagram[] = getCollectionAsArray(
+			pdModel['c:ClassDiagrams']?.['o:ClassDiagram']
+		);
+		let classParserResolver = (diagram) =>
+			parse(diagram, definitions, isPackage ? pdModel['@_Id'] : false);
+		classDiagrams.forEach((d) =>
+			isPackage ? (converted = classParserResolver(d)) : converted.push(classParserResolver(d))
+		);
+		return converted;
+		// END - Class diagram
+	}
+
+	if (diagram.type === 'o:PhysicalDiagram') return parser(diagram, definitions);
+	if (diagram.type === 'o:ClassDiagram') return parse(diagram, definitions, false);
+	if (diagram.type === 'o:UseCaseDiagram') return parseUseCaseDiagram(diagram, definitions);
+	if (diagram.type === 'o:ConceptualDiagram') return parseConceptualDiagram(diagram, definitions);
+
+	return null;
 	// Seznam pretvorjenih diagramov datoteke
 	let converted: any[] = [];
 
 	// START - Pretvorba fizičnih diagramov
 	let physicalDiagrams: PDPhysicalDiagram[] = [];
 	if (pdModel['c:PhysicalDiagrams']) {
-		physicalDiagrams = [].concat(pdModel['c:PhysicalDiagrams']['o:PhysicalDiagram']);
+		physicalDiagrams = getCollectionAsArray(pdModel['c:PhysicalDiagrams']?.['o:PhysicalDiagram']);
 	}
 	let physicalParserResolver = (diagram) => parser(diagram, definitions);
 	physicalDiagrams.forEach((diagram) => converted.push(physicalParserResolver(diagram)));
@@ -135,8 +187,11 @@ const parsePdModel = (pdModel: object, isPackage = false) => {
 	let classDiagrams: PDClassDiagram[] = getCollectionAsArray(
 		pdModel['c:ClassDiagrams']?.['o:ClassDiagram']
 	);
-	let classParserResolver = (diagram) => parse(diagram, definitions, isPackage ? pdModel['@_Id'] : false);
-	classDiagrams.forEach((d) => isPackage ? converted = classParserResolver(d) : converted.push(classParserResolver(d)));
+	let classParserResolver = (diagram) =>
+		parse(diagram, definitions, isPackage ? pdModel['@_Id'] : false);
+	classDiagrams.forEach((d) =>
+		isPackage ? (converted = classParserResolver(d)) : converted.push(classParserResolver(d))
+	);
 	// END - Class diagram
 
 	return converted;
@@ -152,7 +207,7 @@ const PDCollectionParser = {
 	'c:Packages': function (col) {
 		let obj = {};
 		let packages: PDPackage[] = getCollectionAsArray(col?.['o:Package']);
-		packages.forEach((p) => (obj[p['@_Id']] = parsePdModel(p, true)));
+		packages.forEach((p) => (obj[p['@_Id']] = parsePdModel(p, null, true)));
 		return obj;
 	},
 
