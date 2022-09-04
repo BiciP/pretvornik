@@ -8,6 +8,7 @@ export class PDParser {
 	private PDObjects: object;
 	private PDSymbols: object;
 	SequenceParser: () => void;
+	CurrentDiagram: any;
 
 	constructor(PDFile: string) {
 		let { model, list } = parseFile(PDFile, 'COL_LIST');
@@ -27,12 +28,13 @@ export class PDParser {
 			throw new Error(`Diagram not found: ${ObjectID}`);
 		}
 
+		this.CurrentDiagram = Diagram;
 		let PUML = `@startuml ${Diagram['a:Name']}\n`;
 
 		if (Diagram['x:Type'] === 'o:PhysicalDiagram') {
 			PUML += `hide circle\nskinparam linetype ortho\n`;
 		} else if (Diagram['x:Type'] === 'o:UseCaseDiagram') {
-			PUML += `left to right direction\n`
+			PUML += `left to right direction\n`;
 		} else {
 			console.log(Diagram['x:Type']);
 		}
@@ -182,10 +184,21 @@ export class PDParser {
 		let PDSymbols = Diagram['c:Symbols'] || {};
 		let Symbols = Object.keys(this.SymbolParserMap);
 		for (let Symbol of Symbols) {
+			if (Diagram['x:Type'] === 'o:UseCaseDiagram' && Symbol === 'o:UseCaseSymbol') {
+				PUML += `rectangle ${Diagram['a:Name']} {\n`;
+			}
 			let ParseSymbols = this.SymbolParserMap[Symbol];
-			if (!ParseSymbols) continue;
+			if (!ParseSymbols) {
+				if (Diagram['x:Type'] === 'o:UseCaseDiagram' && Symbol === 'o:PackageSymbol') {
+					PUML += '}\n\n';
+				}
+				continue;
+			}
 			let col = getCollectionAsArray(PDSymbols[Symbol]);
 			PUML += ParseSymbols(col);
+			if (Diagram['x:Type'] === 'o:UseCaseDiagram' && Symbol === 'o:PackageSymbol') {
+				PUML += '}\n\n';
+			}
 		}
 		return PUML;
 	}
@@ -256,6 +269,7 @@ export class PDParser {
 
 	PackageSymbolParser(symbols) {
 		let puml = '';
+		let tab = this.CurrentDiagram['x:Type'] === 'o:UseCaseDiagram' ? '\t' : '';
 		this.PDSymbols['o:PackageSymbol'] = this.PDSymbols['o:PackageSymbol'] || {};
 
 		symbols.forEach((symbol) => {
@@ -264,12 +278,12 @@ export class PDParser {
 			let colorTo = getColor(symbol, ['a:FillColor'], 'ffffc0');
 			let lineColor = getColor(symbol, ['a:LineColor'], 'b2b2b2');
 			let colorDef = `#${colorFrom}/${colorTo};line:${lineColor}`;
-			let def = `package "${object['a:Name']}" as ${object['@_Id']} ${colorDef} {\n}`;
-			puml += def + '\n\n';
+			let def = `${tab}package "${object['a:Name']}" as ${object['@_Id']} ${colorDef} {\n}`;
+			puml += def + '\n';
 			this.PDSymbols['o:PackageSymbol'][symbol['@_Id']] = object['@_Id'];
 		});
 
-		return puml;
+		return puml + (this.CurrentDiagram['x:Type'] === 'o:UseCaseDiagram' ? '' : '\n');
 	}
 
 	TableSymbolParser(symbols) {
@@ -361,12 +375,12 @@ export class PDParser {
 		symbols.forEach((symbol) => {
 			let object = this.getSymbolObject(symbol['c:Object'], 'o:UseCase');
 			let color = getColorDefinition(symbol);
-			let def = `usecase "${object['a:Name']}" as ${object['@_Id']} ${color};line.bold\n`;
+			let def = `\tusecase "${object['a:Name']}" as ${object['@_Id']} ${color};line.bold\n`;
 			puml += def;
 			this.PDSymbols['o:UseCaseSymbol'][symbol['@_Id']] = object['@_Id'];
 		});
 
-		return `${puml}\n`;
+		return puml;
 	}
 
 	DependencySymbolParser(symbols) {
