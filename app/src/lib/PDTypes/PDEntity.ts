@@ -1,4 +1,4 @@
-import type { IdAttributes, PDObject, RefAttributes } from '.';
+import type { IdAttributes, PDObject, PDObjectDefinition, RefAttributes } from '.';
 
 export interface EntityAttribute extends IdAttributes {
 	'a:ObjectID': string;
@@ -19,6 +19,12 @@ export interface Identifier extends PDObject {
 	'a:Modifier': string;
 	'c:Identifier.Attributes': {
 		'o:EntityAttribute': EntityAttribute | EntityAttribute[];
+	};
+}
+
+export interface PDAssociationObject extends PDObjectDefinition {
+	'c:Attributes': {
+		'o:AssociationAttribute': EntityAttribute | EntityAttribute[]
 	};
 }
 

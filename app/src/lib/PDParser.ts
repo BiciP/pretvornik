@@ -1,3 +1,9 @@
+import {
+	getRelationshipArrow,
+	parseAssociation,
+	parseEntities,
+	parseEntity
+} from './DiagramParser/Conceptual';
 import { parser, parseReference, parseTable, parseTables } from './DiagramParser/Physical';
 import { getCollectionAsArray, parseColor } from './helpers';
 import { parseFile } from './Parser';
@@ -33,6 +39,8 @@ export class PDParser {
 
 		if (Diagram['x:Type'] === 'o:PhysicalDiagram') {
 			PUML += `hide circle\nskinparam linetype ortho\n`;
+		} else if (Diagram['x:Type'] === 'o:ConceptualDiagram') {
+			PUML += `hide circle\n`;
 		} else if (Diagram['x:Type'] === 'o:UseCaseDiagram') {
 			PUML += `left to right direction\n`;
 		} else {
@@ -454,6 +462,149 @@ export class PDParser {
 		return puml;
 	}
 
+	EntitySymbolParser(symbols) {
+		let puml = '';
+		this.PDSymbols['o:EntitySymbol'] = this.PDSymbols['o:EntitySymbol'] || {};
+
+		symbols.forEach((symbol) => {
+			let object = this.getSymbolObject(symbol['c:Object'], 'o:Entity');
+			let color = getColorDefinition(symbol);
+			let def = parseEntity(object, this.PDObjects['o:DataItem']);
+			def = def.replace('{{COLOR}}', color);
+			puml += def;
+			this.PDSymbols['o:EntitySymbol'][symbol['@_Id']] = object['@_Id'];
+		});
+
+		return puml;
+	}
+
+	AssociationSymbolParser(symbols) {
+		let puml = '';
+		this.PDSymbols['o:AssociationSymbol'] = this.PDSymbols['o:AssociationSymbol'] || {};
+
+		symbols.forEach((symbol) => {
+			let object = this.getSymbolObject(symbol['c:Object'], 'o:Association');
+			let color = getColorDefinition(symbol);
+			let def = parseAssociation(object, this.PDObjects['o:DataItem']);
+			def = def.replace('{{COLOR}}', color);
+
+			puml += def;
+			this.PDSymbols['o:AssociationSymbol'][symbol['@_Id']] = object['@_Id'];
+		});
+
+		return puml;
+	}
+
+	AssociationLinkSymbolParser(symbols) {
+		let puml = '';
+
+		symbols.forEach((symbol) => {
+			let object = this.getSymbolObject(symbol['c:Object'], 'o:AssociationLink')
+
+			let SourceType = Object.keys(symbol['c:SourceSymbol'])[0];
+			let SourceRef = symbol['c:SourceSymbol'][SourceType]['@_Ref'];
+			let Source = this.PDSymbols[SourceType][SourceRef];
+
+			let DestType = Object.keys(symbol['c:DestinationSymbol'])[0];
+			let DestRef = symbol['c:DestinationSymbol'][DestType]['@_Ref'];
+			let Dest = this.PDSymbols[DestType][DestRef];
+
+			let color = parseColor(symbol['a:LineColor']);
+			let text = object['a:Cardinality']
+			let def = `${Source} -[#${color}]- ${Dest}: ${text}`;
+
+			puml += def + '\n';
+		});
+
+		return puml;
+	}
+
+	RelationshipSymbolParser(symbols) {
+		let puml = '';
+
+		symbols.forEach((symbol) => {
+			let object = this.getSymbolObject(symbol['c:Object'], 'o:Relationship');
+
+			let SourceType = Object.keys(symbol['c:SourceSymbol'])[0];
+			let SourceRef = symbol['c:SourceSymbol'][SourceType]['@_Ref'];
+			let Source = this.PDSymbols[SourceType][SourceRef];
+
+			let DestType = Object.keys(symbol['c:DestinationSymbol'])[0];
+			let DestRef = symbol['c:DestinationSymbol'][DestType]['@_Ref'];
+			let Dest = this.PDSymbols[DestType][DestRef];
+
+			let Name = object['a:Name'];
+			let color = parseColor(symbol['a:LineColor']);
+			let arrow = getRelationshipArrow(object);
+			arrow = arrow.replace('{{COLOR}}', `[#${color}]`);
+			let def = `${Source} ${arrow} ${Dest}: ${Name}`;
+
+			puml += def + '\n';
+		});
+
+		return puml;
+	}
+
+	InheritanceSymbolParser(symbols) {
+		let puml = '';
+		this.PDSymbols['o:InheritanceSymbol'] = this.PDSymbols['o:InheritanceSymbol'] || {};
+
+		symbols.forEach((symbol) => {
+			let object = this.getSymbolObject(symbol['c:Object'], 'o:Inheritance');
+			let color = getColorDefinition(symbol);
+			let text = object['a:Name'];
+			if (object['a:MutuallyExclusive'] === 1) text += '\\nMutually Exclusive';
+			if (object['a:BaseLogicalInheritance.Complete'] !== 0) text += '\\nComplete';
+			let def = `circle "${text}" as ${object['@_Id']} ${color}\n`;
+			puml += def;
+			this.PDSymbols['o:InheritanceSymbol'][symbol['@_Id']] = object['@_Id'];
+		});
+
+		return puml;
+	}
+
+	InheritanceRootSymbolParser(symbols) {
+		let puml = '';
+
+		symbols.forEach((symbol) => {
+			let SourceType = Object.keys(symbol['c:SourceSymbol'])[0];
+			let SourceRef = symbol['c:SourceSymbol'][SourceType]['@_Ref'];
+			let Source = this.PDSymbols[SourceType][SourceRef];
+
+			let DestType = Object.keys(symbol['c:DestinationSymbol'])[0];
+			let DestRef = symbol['c:DestinationSymbol'][DestType]['@_Ref'];
+			let Dest = this.PDSymbols[DestType][DestRef];
+
+			let color = parseColor(symbol['a:LineColor']);
+			let def = `${Source} -[#${color}]-|> ${Dest}`;
+
+			puml += def + '\n';
+		});
+
+		return puml;
+	}
+
+	InheritanceLinkSymbolParser(symbols) {
+		let puml = '';
+
+		symbols.forEach((symbol) => {
+			let SourceType = Object.keys(symbol['c:SourceSymbol'])[0];
+			let SourceRef = symbol['c:SourceSymbol'][SourceType]['@_Ref'];
+			let Source = this.PDSymbols[SourceType][SourceRef];
+
+			let DestType = Object.keys(symbol['c:DestinationSymbol'])[0];
+			let DestRef = symbol['c:DestinationSymbol'][DestType]['@_Ref'];
+			let Dest = this.PDSymbols[DestType][DestRef];
+
+			let color = parseColor(symbol['a:LineColor']);
+			let def = `${Source} -[#${color}]- ${Dest}`;
+
+			puml += def + '\n';
+		});
+
+		return puml;
+	}
+
 	getSymbolObject(Reference: object, DefaultType: string) {
 		let ObjectType = Object.keys(Reference)[0];
 		let ObjectRef = Reference[ObjectType]['@_Ref'];
@@ -478,6 +629,9 @@ export class PDParser {
 	}
 
 	SymbolParserMap = {
+		'o:EntitySymbol': this.EntitySymbolParser.bind(this),
+		'o:InheritanceSymbol': this.InheritanceSymbolParser.bind(this),
+		'o:AssociationSymbol': this.AssociationSymbolParser.bind(this),
 		'o:ActorSymbol': this.ActorSymbolParser.bind(this),
 		'o:UseCaseSymbol': this.UseCaseSymbolParser.bind(this),
 		'o:PackageSymbol': this.PackageSymbolParser.bind(this),
@@ -489,7 +643,11 @@ export class PDParser {
 		'o:UseCaseAssociationSymbol': this.UCAssociationSymbolParser.bind(this),
 		'o:ExtendedDependencySymbol': this.ExtendedDepSymbolParser.bind(this),
 		'o:DependencySymbol': this.DependencySymbolParser.bind(this),
-		'o:GeneralizationSymbol': this.GeneralizationSymbolParser.bind(this)
+		'o:GeneralizationSymbol': this.GeneralizationSymbolParser.bind(this),
+		'o:RelationshipSymbol': this.RelationshipSymbolParser.bind(this),
+		'o:InheritanceRootLinkSymbol': this.InheritanceRootSymbolParser.bind(this),
+		'o:InheritanceLinkSymbol': this.InheritanceLinkSymbolParser.bind(this),
+		'o:AssociationLinkSymbol': this.AssociationLinkSymbolParser.bind(this)
 	};
 }
 
@@ -554,5 +712,8 @@ let colObjMap = {
 	'c:Model.Objects': 'o:UMLObject',
 	'c:Messages': 'o:Message',
 	'c:Views': 'o:View',
-	'c:Procedures': 'o:Procedure'
+	'c:Procedures': 'o:Procedure',
+	'c:DataItems': 'o:DataItem',
+	'c:Inheritances': 'o:Inheritance',
+	'c:AssociationsLinks': 'o:AssociationsLink'
 };
