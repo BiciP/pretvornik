@@ -6,7 +6,7 @@ import type {
 	ReferenceJoinObject
 } from '../PDTypes/PDReference';
 import type { PDPhysicalDiagram } from '../PDTypes/PDPhysicalDiagram';
-import { getCollectionAsArray, parseColor } from '../helpers';
+import { getCollectionAsArray, getObjectRef, parseColor } from '../helpers';
 import type { RefAttributes } from '$lib/PDTypes';
 
 let fk = {};
@@ -18,11 +18,13 @@ export const parser = (diagram: PDPhysicalDiagram, PDObjects: any) => {
 	// Parse Table symbols
 	let tableSymbols: PDTableSymbol[] = getCollectionAsArray(diagram['c:Symbols']?.['o:TableSymbol']);
 	tableSymbols.forEach((symbol) => {
-		let colorFrom = parseColor(symbol['a:GradientEndColor']) || parseColor(symbol['a:FillColor']) || 'c0ffc0';
+		let colorFrom =
+			parseColor(symbol['a:GradientEndColor']) || parseColor(symbol['a:FillColor']) || 'c0ffc0';
 		let colorTo = parseColor(symbol['a:FillColor']) || 'c0ffc0';
 		let lineColor = parseColor(symbol['a:LineColor']) || '0000ff';
 		let colorDef = `#${colorFrom}/${colorTo};line:${lineColor}`;
-		let def = PDObjects['o:Table'][symbol['c:Object']['o:Table']['@_Ref']] + '\n';
+		let ref = getObjectRef(symbol['c:Object']);
+		let def = PDObjects['o:Table'][ref] + '\n';
 		def = def.replace('{{COLOR}}', colorDef);
 		PUMLDiagram += def;
 	});
@@ -33,7 +35,8 @@ export const parser = (diagram: PDPhysicalDiagram, PDObjects: any) => {
 	);
 	refSymbols.forEach((symbol) => {
 		let color = parseColor(symbol['a:LineColor']);
-		let puml = PDObjects['o:Reference'][symbol['c:Object']['o:Reference']['@_Ref']] + '\n';
+		let ref = getObjectRef(symbol['c:Object']);
+		let puml = PDObjects['o:Reference'][ref] + '\n';
 		puml = puml.replace('{{ARROW}}', `-${`[#${color}]`}->`);
 		PUMLDiagram += puml;
 	});
@@ -51,85 +54,82 @@ export const parser = (diagram: PDPhysicalDiagram, PDObjects: any) => {
 	};
 };
 
-export function parseTables(tables: PDTableObject[], model: null) {
+export function parseTable(table: PDTableObject) {
+	let pks: RefAttributes[] = getCollectionAsArray(table['c:PrimaryKey']?.['o:Key']);
+	let fks: { parentRef: string; obj1: string; obj2: string }[] = fk[table['@_Id']] || [];
+	let fkParents = new Set();
+	let keys: TableKey[] = getCollectionAsArray(table['c:Keys']?.['o:Key']);
+	let columns: TableColumn[] = getCollectionAsArray(table['c:Columns']?.['o:Column']);
+
+	let PUML = `entity "${table['a:Name']}" as ${table['@_Id']} {{COLOR}} {\n`;
+
+	// parse primary keys
+	pks.forEach((pk) => {
+		let keyId = pk['@_Ref'];
+		let keyIndex = keys.findIndex((key) => key['@_Id'] === keyId);
+		if (keyIndex < 0) {
+			throw new Error(`Primary key "${pk['@_Ref']}" could not be parsed. Key not found.`);
+		}
+		let key = keys[keyIndex];
+		let keyColsIds: RefAttributes[] = getCollectionAsArray(key['c:Key.Columns']['o:Column']);
+		keyColsIds.map((keyColIdRef) => {
+			let colIndex = columns.findIndex((col) => col?.['@_Id'] === keyColIdRef['@_Ref']);
+			if (colIndex < 0) {
+				throw new Error(`Primary key "${pk['@_Ref']}" could not be parsed. Key column not found.`);
+			}
+			columns[colIndex].isPrimary = true;
+		});
+	});
+
+	fks.forEach((fkObj, i) => {
+		fkParents.add(fkObj.parentRef);
+		let column = columns.find((col) => col['@_Id'] === fkObj.obj2);
+		if (!column) return;
+		column.foreignKey = fkParents.size;
+	});
+
+	columns.filter((col) => col.isPrimary).forEach((col) => (PUML += parseColumnData(col)));
+	PUML += '\t---\n';
+	columns.filter((col) => !col.isPrimary).forEach((col) => (PUML += parseColumnData(col)));
+
+	PUML += `}\n`;
+
+	return PUML;
+}
+
+export function parseTables(tables: PDTableObject[]) {
 	// { o1: PUMLEntity, o2: PUMLEntity }
 	let obj = {};
 
 	tables.forEach((table) => {
-		let pks: RefAttributes[] = getCollectionAsArray(table['c:PrimaryKey']?.['o:Key']);
-		let fks: { parentRef: string; obj1: string; obj2: string }[] = fk[table['@_Id']] || [];
-        let fkParents = new Set()
-		let keys: TableKey[] = getCollectionAsArray(table['c:Keys']?.['o:Key']);
-		let columns: TableColumn[] = getCollectionAsArray(table['c:Columns']?.['o:Column']);
-
-		let PUML = `entity "${table['a:Name']}" as ${table['@_Id']} {{COLOR}} {\n`;
-
-		// parse primary keys
-		pks.forEach((pk) => {
-			let keyId = pk['@_Ref'];
-			let keyIndex = keys.findIndex((key) => key['@_Id'] === keyId);
-			if (keyIndex < 0) {
-				throw new Error(`Primary key "${pk['@_Ref']}" could not be parsed. Key not found.`);
-			}
-			let key = keys[keyIndex];
-			let keyColsIds: RefAttributes[] = getCollectionAsArray(key['c:Key.Columns']['o:Column']);
-			keyColsIds.map((keyColIdRef) => {
-				let colIndex = columns.findIndex((col) => col?.['@_Id'] === keyColIdRef['@_Ref']);
-				if (colIndex < 0) {
-					throw new Error(
-						`Primary key "${pk['@_Ref']}" could not be parsed. Key column not found.`
-					);
-				}
-				columns[colIndex].isPrimary = true;
-			});
-		});
-
-		fks.forEach((fkObj, i) => {
-            fkParents.add(fkObj.parentRef)
-            let column = columns.find(col => col['@_Id'] === fkObj.obj2)
-			if (!column) return
-            column.foreignKey = fkParents.size
-		});
-
-		columns.filter((col) => col.isPrimary).forEach((col) => (PUML += parseColumnData(col)));
-		PUML += '\t---\n';
-		columns.filter((col) => !col.isPrimary).forEach((col) => (PUML += parseColumnData(col)));
-
-		PUML += `}\n`;
-
-		obj[table['@_Id']] = PUML;
+		obj[table['@_Id']] = parseTable(table);
 	});
 
 	return obj;
+}
+
+export function parseReference(ref: PDReferenceObject) {
+	// console.log({ref})
+	let joins: ReferenceJoinObject[] = getCollectionAsArray(ref['c:Joins']?.['o:ReferenceJoin']);
+	joins.forEach((join) => {
+		let child = getObjectRef(ref['c:ChildTable']);
+		let parentRef = getObjectRef(ref['c:ParentTable']);
+		let obj1 = join['c:Object1']['o:Column']['@_Ref'];
+		let obj2 = join['c:Object2']['o:Column']['@_Ref'];
+		if (!fk[child]) fk[child] = [];
+		fk[child].push({
+			parentRef,
+			obj1,
+			obj2
+		});
+	});
 }
 
 export function parseReferences(references: PDReferenceObject[]) {
 	let obj = {};
 
 	references.forEach((ref) => {
-		let parent = ref['c:ParentTable']['o:Table']['@_Ref'];
-		let parentRole = ref['a:ParentRole'];
-		let child = ref['c:ChildTable']['o:Table']['@_Ref'];
-		let childRole = ref['a:ChildRole'];
-		let code = ref['a:Code'];
-
-		let joins: ReferenceJoinObject[] = getCollectionAsArray(ref['c:Joins']?.['o:ReferenceJoin']);
-		joins.forEach((join) => {
-			let child = ref['c:ChildTable']['o:Table']['@_Ref'];
-			let parentRef = ref['c:ParentTable']['o:Table']['@_Ref'];
-			let obj1 = join['c:Object1']['o:Column']['@_Ref'];
-			let obj2 = join['c:Object2']['o:Column']['@_Ref'];
-			if (!fk[child]) fk[child] = [];
-			fk[child].push({
-				parentRef,
-				obj1,
-				obj2
-			});
-		});
-
-		obj[ref['@_Id']] = `${child}${childRole ? ` "${childRole}" ` : ' '} {{ARROW}} ${
-			parentRole ? ` "${parentRole}" ` : ' '
-		}${parent}${code ? ` : ${code}` : ''}`;
+		obj[ref['@_Id']] = parseReference(ref);
 	});
 
 	return obj;

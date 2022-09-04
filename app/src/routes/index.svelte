@@ -1,9 +1,14 @@
 <script lang="ts">
+	import { parse } from '$lib/DiagramParser/Class';
+
+	import { PDParser } from '$lib/PDParser';
+
 	import DiagramItem from '../components/DiagramItem.svelte';
 	import Parser, { getDiagramList, parseDiagram } from '../lib/index';
 
 	let diagrams: any[] = [];
 	let pdModel: any;
+	let parser: PDParser;
 	let diagramList: any[] = [];
 
 	function readText(filePath: any) {
@@ -13,6 +18,9 @@
 		if (filePath.target?.files && filePath.target?.files[0] && reader) {
 			reader.onload = function (e) {
 				output = e.target?.result;
+				parser = new PDParser(output.toString());
+				// diagramList = parser.DiagramList;
+				// pdModel = parser.PDModel;
 				let { model, list } = getDiagramList(output);
 				diagramList = list;
 				pdModel = model;
@@ -43,14 +51,18 @@
 		let diagramId = form.get('diagram');
 
 		if (!diagramId) return;
-		let diagram = findDiagram(diagramList, diagramId);
+		let model = parser.parseDiagram(diagramId.toString());
+		// let diagram = findDiagram(diagramList, diagramId);
 
-		let model = parseDiagram(diagram.parent, diagram);
-		model = {
-			...model,
-			imageUrl: compress(model.data)
-		};
-		diagrams = [model];
+		// let model = parseDiagram(diagram.parent, diagram);
+
+		diagrams = [
+			{
+				diagram: { name: 'TODO', type: 'TODO' },
+				data: model,
+				imageUrl: compress(model)
+			}
+		];
 	}
 </script>
 

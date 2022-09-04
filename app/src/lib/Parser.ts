@@ -44,6 +44,14 @@ import type { PDRealization } from './PDTypes/ClassDiagram/PDRealization';
 import type { PDInterface } from './PDTypes/ClassDiagram/PDInterface';
 import type { PDRequireLink } from './PDTypes/ClassDiagram/PDRequireLink';
 import type { PDPackage } from './PDTypes/ClassDiagram/PDPackage';
+import { parseMessages, parseModelObjects, parseSequenceDiagram } from './DiagramParser/Sequence';
+import type { PDMessage } from './PDTypes/Sequence/PDMessage';
+import type {
+	PDActorShortcut,
+	PDMessageShortcut,
+	PDShortcutDefinition
+} from './PDTypes/Sequence/PDMessageShortcut';
+import { mapActorShortcuts, mapMessageShortcuts, mapShortcuts } from './MapShortcuts';
 
 // Pretvori XML v JS in inicializira branje diagrama
 export const parseFile = (file: string, returnType: 'PARSE' | 'COL_LIST' = 'PARSE') => {
@@ -55,9 +63,10 @@ export const parseFile = (file: string, returnType: 'PARSE' | 'COL_LIST' = 'PARS
 	let pdModel = xml['Model']?.['o:RootObject']?.['c:Children']?.['o:Model'];
 	if (!pdInfo || !pdModel) throw new ParserError(PARSE_ERROR_MESSAGE.NOT_A_PD_FILE);
 
+	// console.log(JSON.stringify(pdModel));
 	if (returnType === 'COL_LIST') {
 		return {
-			model: pdModel,
+			model: JSON.parse(JSON.stringify(pdModel)),
 			list: getCollectionList(pdModel)
 		};
 	}
@@ -74,7 +83,8 @@ const getCollectionList = (pdModel: object) => {
 		'c:ClassDiagrams': 'o:ClassDiagram',
 		'c:UseCaseDiagrams': 'o:UseCaseDiagram',
 		'c:PhysicalDiagrams': 'o:PhysicalDiagram',
-		'c:ConceptualDiagrams': 'o:ConceptualDiagram'
+		'c:ConceptualDiagrams': 'o:ConceptualDiagram',
+		'c:SequenceDiagrams': 'o:SequenceDiagram'
 	};
 
 	let list = [];
@@ -84,9 +94,8 @@ const getCollectionList = (pdModel: object) => {
 			col.type = val;
 			if (val === 'o:Package') {
 				col.children = getCollectionList(col);
-			} else {
-				col.parent = pdModel;
 			}
+			col.parent = pdModel;
 			list.push(col);
 		});
 	});
@@ -100,7 +109,6 @@ export const parsePdModel = (pdModel: object, diagram: any, isPackage = false) =
 	// writeFileSync("json.json", JSON.stringify(pdModel));
 	// PlantUML definicije PowerDesigner objektov
 	let definitions = {};
-	// console.log(pdModel);
 
 	// V prihodje se bomo po pretvorjenih objektih sklicevali
 	// po objektu (o:XXX) in ne po collectionu (c:XXX)
@@ -121,7 +129,9 @@ export const parsePdModel = (pdModel: object, diagram: any, isPackage = false) =
 		'c:Realizations': 'o:Realization',
 		'c:Interfaces': 'o:Interface',
 		'c:RequireLinks': 'o:RequireLink',
-		'c:Packages': 'o:Package'
+		'c:Packages': 'o:Package',
+		'c:Model.Objects': 'o:UMLObject',
+		'c:Messages': 'o:Message'
 	};
 
 	// this should resolve into an object of objects
@@ -136,7 +146,7 @@ export const parsePdModel = (pdModel: object, diagram: any, isPackage = false) =
 
 	if (isPackage) {
 		// START - Class diagram
-		let converted = []
+		let converted = [];
 		let classDiagrams: PDClassDiagram[] = getCollectionAsArray(
 			pdModel['c:ClassDiagrams']?.['o:ClassDiagram']
 		);
@@ -153,7 +163,7 @@ export const parsePdModel = (pdModel: object, diagram: any, isPackage = false) =
 	if (diagram.type === 'o:ClassDiagram') return parse(diagram, definitions, false);
 	if (diagram.type === 'o:UseCaseDiagram') return parseUseCaseDiagram(diagram, definitions);
 	if (diagram.type === 'o:ConceptualDiagram') return parseConceptualDiagram(diagram, definitions);
-
+	if (diagram.type === 'o:SequenceDiagram') return parseSequenceDiagram(diagram, definitions);
 	return null;
 	// Seznam pretvorjenih diagramov datoteke
 	let converted: any[] = [];
@@ -203,6 +213,21 @@ export const parsePdModel = (pdModel: object, diagram: any, isPackage = false) =
 
 const PDCollectionParser = {
 	'': function () {},
+
+	'c:Messages': function (col, pdModel) {
+		// parse shortcuts
+		let shortcuts: PDMessageShortcut[] = getCollectionAsArray(col?.['o:Shortcut']);
+		shortcuts = mapMessageShortcuts(shortcuts, pdModel);
+
+		let msgs: PDMessage[] = getCollectionAsArray(col?.['o:Message']);
+		// @ts-ignore
+		return parseMessages(msgs.concat(shortcuts));
+	},
+
+	'c:Model.Objects': function (col) {
+		let objs = getCollectionAsArray(col?.['o:UMLObject']);
+		return parseModelObjects(objs);
+	},
 
 	'c:Packages': function (col) {
 		let obj = {};
@@ -256,9 +281,11 @@ const PDCollectionParser = {
 		return parseUseCaseAssociations(assocs);
 	},
 
-	'c:Actors': function (col) {
+	'c:Actors': function (col, pdModel) {
+		let shortcuts: PDActorShortcut[] = getCollectionAsArray(col?.['o:Shortcut']);
+		shortcuts = mapActorShortcuts(shortcuts, pdModel);
 		let actors: PDActor[] = getCollectionAsArray(col?.['o:Actor']);
-		return parseActors(actors);
+		return parseActors(actors.concat(shortcuts));
 	},
 
 	'c:UseCases': function (col) {
@@ -267,13 +294,19 @@ const PDCollectionParser = {
 	},
 
 	'c:Tables': function (col, pdModel) {
+		// parse shortcuts
+		let shortcuts: any[] = getCollectionAsArray(col?.['o:Shortcut']);
+		shortcuts = mapShortcuts(shortcuts, pdModel, 'c:Tables', 'o:table');
+
 		let tables: PDTableObject[] = getCollectionAsArray(col?.['o:Table']);
-		return parseTables(tables, pdModel);
+		return parseTables(shortcuts.concat(tables), pdModel);
 	},
 
-	'c:References': function (col) {
+	'c:References': function (col, pdModel) {
+		let cuts = getCollectionAsArray(col?.['o:Shortcut']);
+		cuts = mapShortcuts(cuts, pdModel, 'c:References', 'o:Reference');
 		let references: PDReferenceObject[] = getCollectionAsArray(col?.['o:Reference']);
-		return parseReferences(references);
+		return parseReferences(cuts.concat(references));
 	},
 
 	'c:Entities': function (col, pdModel) {

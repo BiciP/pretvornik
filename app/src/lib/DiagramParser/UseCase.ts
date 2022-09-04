@@ -23,7 +23,7 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 	let ActorSymbols: ActorSymbol[] = getCollectionAsArray(diagram['c:Symbols']?.['o:ActorSymbol']);
 	ActorSymbols.forEach(
 		(ActorSymbol) =>
-			(PUMLDiagram += PDObjects['o:Actor'][ActorSymbol['c:Object']['o:Actor']['@_Ref']] + '\n')
+			(PUMLDiagram += PDObjects['o:Actor'][ActorSymbol['c:Object']['o:Actor']['@_Ref']])
 	);
 
 	// parse use cases
@@ -79,7 +79,7 @@ export function parseUseCaseDiagram(diagram: PDUseCaseDiagram, PDObjects: object
 	);
 	Extended.forEach((Dep) => {
 		let def = PDObjects['o:ExtendedDependency'][Dep['c:Object']['o:ExtendedDependency']['@_Ref']];
-		def = def.replace('{{ARROW}}', '..>')
+		def = def.replace('{{ARROW}}', '..>');
 		PUMLDiagram += def;
 	});
 
@@ -150,7 +150,7 @@ export function parseActors(actors: PDActor[]) {
 	let obj = {};
 
 	actors.forEach((actor) => {
-		obj[actor['@_Id']] = `actor "${actor['a:Name']}" as ${actor['@_Id']}`;
+		obj[actor['@_Id']] = `actor "${actor['a:Name']}" as ${actor['@_Id']}\n`;
 	});
 
 	return obj;
