@@ -44,10 +44,10 @@ export function parse(diagram: PDClassDiagram, PDObjects: any, packageId = false
 		let lineColor = parseColor(Package['a:LineColor']) || parseColor(11711154);
 		let colorDef = `#${colorFrom}/${colorTo};line:${lineColor}`;
 		let def = PDObjects['o:Package'][ref];
-		if (!def) return
+		if (!def) return;
 		def = def.replace('{{COLOR}}', colorDef);
 		def = def.replace('\n{{END}}', '{{END}}');
-        def = def.replaceAll('\n', '\n\t')
+		def = def.replaceAll('\n', '\n\t');
 		def = def.replace('{{END}}', '\n');
 		PUML += `${def}\n`;
 	});
@@ -209,65 +209,77 @@ export function parse(diagram: PDClassDiagram, PDObjects: any, packageId = false
 	};
 }
 
+export function parseClass(cl: PDClass) {
+	let puml = `class "${cl['a:Name']}" as ${cl['@_Id']} {{COLOR}} {\n`;
+
+	puml += parseAttributes(getCollectionAsArray(cl['c:Attributes']?.['o:Attribute']));
+	puml += parseOperations(getCollectionAsArray(cl['c:Operations']?.['o:Operation']));
+
+	puml += '}\n';
+	return puml;
+}
+
+function parseClassDeep(cl: PDClass, parent = null) {
+	let PUML = '';
+
+	let name;
+	if (parent) {
+		name = `${parent.name}::${cl['a:Name']}`;
+	} else {
+		name = cl['a:Name'];
+	}
+	cl.name = name;
+
+	let innerClasses = getCollectionAsArray(cl['c:InnerClasses']?.['o:Class']);
+	innerClasses.forEach((c) => (PUML += parseClassDeep(c, cl)));
+
+	let innerDeps: Dependency[] = getCollectionAsArray(cl['c:InnerDependencies']?.['o:Dependency']);
+	innerDeps.forEach((dep) => {
+		let obj1 = getObjectRef(dep['c:Object1']);
+		let obj2 = getObjectRef(dep['c:Object2']);
+		dependencies[dep['@_Id']] = `${obj2} {{ARROW}} ${obj1}\n`;
+	});
+
+	let innerAssocs: Association[] = getCollectionAsArray(
+		cl['c:InnerAssociations']?.['o:Association']
+	);
+	innerAssocs.forEach((assoc) => {
+		let obj1 = getObjectRef(assoc['c:Object1']);
+		let obj2 = getObjectRef(assoc['c:Object2']);
+		let obj1Role = assoc['a:RoleAIndicator'];
+		let arrow;
+		if (obj1Role) {
+			arrow = obj1Role === 'A' ? 'o-{{ARROW}}->' : '*-{{ARROW}}->';
+		} else {
+			arrow = '-{{ARROW}}->';
+		}
+
+		associations[assoc['@_Id']] = `${obj2} ${arrow} ${obj1}\n`;
+	});
+
+	let innerGens: Generalization[] = getCollectionAsArray(
+		cl['c:InnerGeneralizations']?.['o:Generalization']
+	);
+	innerGens.forEach((gen) => {
+		let obj1 = getObjectRef(gen['c:Object1']);
+		let obj2 = getObjectRef(gen['c:Object2']);
+		generalizations[gen['@_Id']] = `${obj2} {{ARROW}} ${obj1}\n`;
+	});
+
+	let puml = `class "${name}" as ${cl['@_Id']} {{COLOR}} {\n`;
+
+	puml += parseAttributes(getCollectionAsArray(cl['c:Attributes']?.['o:Attribute']));
+	puml += parseOperations(getCollectionAsArray(cl['c:Operations']?.['o:Operation']));
+	// todo: parse annotations if needed (same as interfaces)
+
+	puml += '}\n';
+	return puml;
+}
+
 export function parseClasses(classes: PDClass[]) {
 	let obj = {};
 
-	function parseClass(cl: PDClass, parent = null) {
-		let name;
-		if (parent) {
-			name = `${parent.name}::${cl['a:Name']}`;
-		} else {
-			name = cl['a:Name'];
-		}
-		cl.name = name;
-
-		let innerClasses = getCollectionAsArray(cl['c:InnerClasses']?.['o:Class']);
-		innerClasses.forEach((c) => parseClass(c, cl));
-
-		let innerDeps: Dependency[] = getCollectionAsArray(cl['c:InnerDependencies']?.['o:Dependency']);
-		innerDeps.forEach((dep) => {
-			let obj1 = getObjectRef(dep['c:Object1']);
-			let obj2 = getObjectRef(dep['c:Object2']);
-			dependencies[dep['@_Id']] = `${obj2} {{ARROW}} ${obj1}\n`;
-		});
-
-		let innerAssocs: Association[] = getCollectionAsArray(
-			cl['c:InnerAssociations']?.['o:Association']
-		);
-		innerAssocs.forEach((assoc) => {
-			let obj1 = getObjectRef(assoc['c:Object1']);
-			let obj2 = getObjectRef(assoc['c:Object2']);
-			let obj1Role = assoc['a:RoleAIndicator'];
-			let arrow;
-			if (obj1Role) {
-				arrow = obj1Role === 'A' ? 'o-{{ARROW}}->' : '*-{{ARROW}}->';
-			} else {
-				arrow = '-{{ARROW}}->';
-			}
-
-			associations[assoc['@_Id']] = `${obj2} ${arrow} ${obj1}\n`;
-		});
-
-		let innerGens: Generalization[] = getCollectionAsArray(
-			cl['c:InnerGeneralizations']?.['o:Generalization']
-		);
-		innerGens.forEach((gen) => {
-			let obj1 = getObjectRef(gen['c:Object1']);
-			let obj2 = getObjectRef(gen['c:Object2']);
-			generalizations[gen['@_Id']] = `${obj2} {{ARROW}} ${obj1}\n`;
-		});
-
-		let puml = `class "${name}" as ${cl['@_Id']} {{COLOR}} {\n`;
-
-		puml += parseAttributes(getCollectionAsArray(cl['c:Attributes']?.['o:Attribute']));
-		puml += parseOperations(getCollectionAsArray(cl['c:Operations']?.['o:Operation']));
-		// todo: parse annotations if needed (same as interfaces)
-
-		puml += '}\n';
-		obj[cl['@_Id']] = puml;
-	}
-
-	classes.forEach((c) => parseClass(c));
+	classes.forEach((c) => (obj[c['@_Id']] = parseClassDeep(c)));
 	return obj;
 }
 
@@ -300,6 +312,17 @@ export function parseRealizations(reals: PDRealization[]) {
 	});
 
 	return obj;
+}
+
+export function parseInterface(int: PDInterface) {
+	let name = int['a:Name'];
+	let puml = `interface "${name}" as ${int['@_Id']} {{COLOR}} {\n`;
+
+	puml += parseAttributes(getCollectionAsArray(int['c:Attributes']?.['o:Attribute']));
+	puml += parseOperations(getCollectionAsArray(int['c:Operations']?.['o:Operation']));
+
+	puml += '}\n';
+	return puml;
 }
 
 export function parseInterfaces(interfaces: PDInterface[]) {
