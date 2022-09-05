@@ -255,6 +255,7 @@ let dataTypes = {
 	VBIN: 'Variable binary',
 	VMBT: 'Variable multibyte',
 	LBIN: 'Long binary',
+	LVA: 'Long variable characters',
 	BIN: 'Binary',
 	BMP: 'Bitmap',
 	PIC: 'Image',

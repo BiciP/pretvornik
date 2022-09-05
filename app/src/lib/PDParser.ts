@@ -59,7 +59,11 @@ export class PDParser {
 		PUML += this.parseSymbols(Diagram);
 
 		PUML += '\n@enduml';
-		return PUML
+		return PUML;
+	}
+
+	getDiagramName() {
+		return this.CurrentDiagram?.['a:Name'] || '';
 	}
 
 	private parseObjects(Model) {

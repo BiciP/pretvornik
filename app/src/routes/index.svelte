@@ -60,6 +60,34 @@
 			}
 		];
 	}
+
+	function savePUML() {
+		let fileData = diagrams[0].data;
+		let name = parser.getDiagramName()
+		download(fileData, `${name}.txt`, 'text/plain')
+	}
+
+	// Function to download data to a file
+	function download(data, filename, type) {
+		var file = new Blob([data], { type: type });
+		// @ts-ignore
+		if (window.navigator.msSaveOrOpenBlob) {
+			// @ts-ignore // IE10+ 
+			window.navigator.msSaveOrOpenBlob(file, filename);
+		} else {
+			// Others
+			var a = document.createElement('a'),
+				url = URL.createObjectURL(file);
+			a.href = url;
+			a.download = filename;
+			document.body.appendChild(a);
+			a.click();
+			setTimeout(function () {
+				document.body.removeChild(a);
+				window.URL.revokeObjectURL(url);
+			}, 0);
+		}
+	}
 </script>
 
 <h1>Pretvornik PowerDesigner v PlantUML notacijo</h1>
@@ -81,6 +109,10 @@
 		{/each}
 		<input type="submit" />
 	</form>
+{/if}
+
+{#if diagrams.length}
+	<button on:click={savePUML}>Shrani</button>
 {/if}
 
 {#each diagrams as { data, diagram, imageUrl }}
