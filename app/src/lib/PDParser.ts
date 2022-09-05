@@ -7,7 +7,7 @@ import {
 	parseEntity
 } from './DiagramParser/Conceptual';
 import { parser, parseReference, parseTable, parseTables } from './DiagramParser/Physical';
-import { getCollectionAsArray, parseColor } from './helpers';
+import { getCollectionAsArray, getPosition, parseColor } from './helpers';
 import { parseFile } from './Parser';
 
 export class PDParser {
@@ -17,6 +17,7 @@ export class PDParser {
 	private PDSymbols: object;
 	SequenceParser: () => void;
 	CurrentDiagram: any;
+	SequenceEvents: any[];
 
 	constructor(PDFile: string) {
 		let { model, list } = parseFile(PDFile, 'COL_LIST');
@@ -48,6 +49,8 @@ export class PDParser {
 			PUML += `hide circle\n`;
 		} else if (Diagram['x:Type'] === 'o:UseCaseDiagram') {
 			PUML += `left to right direction\n`;
+		} else if (Diagram['x:Type'] === 'o:SequenceDiagram') {
+			this.SequenceEvents = [];
 		} else {
 			console.log(Diagram['x:Type']);
 		}
@@ -56,7 +59,7 @@ export class PDParser {
 		PUML += this.parseSymbols(Diagram);
 
 		PUML += '\n@enduml';
-		return PUML;
+		return PUML
 	}
 
 	private parseObjects(Model) {
@@ -193,10 +196,11 @@ export class PDParser {
 		Packages.forEach((Package) => this.parseReferences(Package));
 	}
 
-	private findObjectByObjectID(ObjectID, ObjType) {
+	private findObjectByObjectID(ObjectID, ObjType): object | null {
 		let Objects = this.PDObjects[ObjType];
-		let Values = Object.values(Objects);
+		let Values = Object.values(Objects || {});
 		for (let Obj of Values) {
+			// @ts-ignore
 			if (Obj['a:ObjectID'] === ObjectID) return Obj;
 		}
 		return null;
@@ -257,6 +261,12 @@ export class PDParser {
 				PUML += '}\n\n';
 			}
 		}
+
+		if (Diagram['x:Type'] === 'o:SequenceDiagram') {
+			let Events = this.SequenceEvents.sort((a, b) => b.time - a.time);
+			Events.forEach(({ def }) => (PUML += def + '\n'));
+		}
+
 		return PUML;
 	}
 
@@ -767,16 +777,80 @@ export class PDParser {
 		return puml;
 	}
 
+	ActorSequenceSymbolParser(symbols) {
+		let puml = '';
+		this.PDSymbols['o:ActorSequenceSymbol'] = this.PDSymbols['o:ActorSequenceSymbol'] || {};
+
+		symbols.forEach((symbol) => {
+			let object = this.getSymbolObject(symbol, 'o:Actor');
+			let def = `actor "${object['a:Name']}" as ${object['@_Id']}\n`;
+			puml += def;
+			this.PDSymbols['o:ActorSequenceSymbol'][symbol['@_Id']] = object['@_Id'];
+			this.parseSymbolActivations(symbol, object);
+		});
+
+		return puml;
+	}
+
+	UMLObjSequenceSymbol(symbols) {
+		let puml = '';
+		this.PDSymbols['o:UMLObjectSequenceSymbol'] = this.PDSymbols['o:UMLObjectSequenceSymbol'] || {};
+
+		symbols.forEach((symbol) => {
+			let object = this.getSymbolObject(symbol, 'o:UMLObject');
+			let def = `participant "${object['a:Name']}" as ${object['@_Id']}\n`;
+			puml += def;
+			this.PDSymbols['o:UMLObjectSequenceSymbol'][symbol['@_Id']] = object['@_Id'];
+			this.parseSymbolActivations(symbol, object);
+		});
+
+		return puml;
+	}
+
+	MessageSymbolParser(symbols) {
+		symbols.forEach((symbol) => {
+			let object = this.getSymbolObject(symbol, 'o:Message');
+
+			let SourceType = Object.keys(symbol['c:SourceSymbol'])[0];
+			let SourceRef = symbol['c:SourceSymbol'][SourceType]['@_Ref'];
+			let Source = this.PDSymbols[SourceType][SourceRef];
+
+			let DestType = Object.keys(symbol['c:DestinationSymbol'])[0];
+			let DestRef = symbol['c:DestinationSymbol'][DestType]['@_Ref'];
+			let Dest = this.PDSymbols[DestType][DestRef];
+
+			let { bottom, top } = getRectPosition(symbol);
+			let arrow =
+				object['a:ControlFlow'] === 'R' ? '-->' : object['a:ControlFlow'] === 'C' ? '->' : '->>';
+			let num = object['a:SequenceNumber'];
+			num = num ? `${num}: ` : '';
+			let def = `${Source} ${arrow} ${Dest}: "${num}${object['a:Name']}"`;
+			this.SequenceEvents.push({
+				time: (bottom + top) / 2,
+				def
+			});
+		});
+
+		// otherwise this prints undefined
+		return '';
+	}
+
 	getSymbolObject(Symbol: object, DefaultType: string) {
 		let Reference = Symbol['c:Object'];
 		let ObjectType = Object.keys(Reference)[0];
 		let ObjectRef = Reference[ObjectType]['@_Ref'];
 		let object = this.PDObjects[ObjectType]?.[ObjectRef];
 
+		if (!object) {
+			console.warn(`Could not find object definition for symbol: ${Symbol['@_Id']}`);
+			console.log(Symbol);
+			return {};
+		}
+
 		if (ObjectType === 'o:Shortcut') {
 			let ObjectID = object['a:TargetID'];
 			let ParentCol = this.PDObjects[DefaultType];
-			let ColItems: any[] = Object.values(ParentCol);
+			let ColItems: any[] = Object.values(ParentCol || {});
 			for (let Parent of ColItems) {
 				if (Parent['a:ObjectID'] === ObjectID) {
 					object = {
@@ -788,10 +862,65 @@ export class PDParser {
 			}
 		}
 
+		if (DefaultType === 'o:UMLObject' && !object['a:Name']) {
+			if (object['a:TargetID']) {
+				let TargetID = object['a:TargetID'];
+				let ObjType = DefaultType;
+				let Parent = this.findObjectByObjectID(TargetID, ObjType);
+				if (Parent) {
+					if (Parent['a:Name'] === '') delete Parent['a:Name'];
+					if (Parent['a:Code'] === '') delete Parent['a:Code'];
+					object = {
+						...Parent,
+						...object
+					};
+				}
+			}
+
+			let InstantiationRef = object['c:InstantiationClass']?.['o:Shortcut']?.['@_Ref'];
+			if (InstantiationRef) {
+				let InstantiationClass = this.PDObjects['o:Shortcut'][InstantiationRef];
+				if (object['a:Name'] === '') delete object['a:Name'];
+				if (object['a:Code'] === '') delete object['a:Code'];
+				object = {
+					...InstantiationClass,
+					...object
+				};
+			}
+		}
+
 		return object;
 	}
 
+	parseSymbolActivations(symbol, object) {
+		this.PDSymbols['o:ActivationSymbol'] = this.PDSymbols['o:ActivationSymbol'] || {};
+		let PDAct = symbol['c:SlaveSubSymbols']?.['o:ActivationSymbol'];
+		let Act = getCollectionAsArray(PDAct);
+		Act.forEach((activation) => {
+			let pos = getRectPosition(activation);
+			let startDef = `activate ${object['@_Id']}`;
+			let endDef = `deactivate ${object['@_Id']}`;
+
+			// add activate event
+			this.SequenceEvents.push({
+				time: pos.top,
+				def: startDef
+			});
+
+			// add deactivate event
+			this.SequenceEvents.push({
+				time: pos.bottom,
+				def: endDef
+			});
+
+			// add to symbol-object map
+			this.PDSymbols['o:ActivationSymbol'][activation['@_Id']] = object['@_Id'];
+		});
+	}
+
 	SymbolParserMap = {
+		'o:ActorSequenceSymbol': this.ActorSequenceSymbolParser.bind(this),
+		'o:UMLObjectSequenceSymbol': this.UMLObjSequenceSymbol.bind(this),
 		'o:ClassSymbol': this.ClassSymbolParser.bind(this),
 		'o:InterfaceSymbol': this.InterfaceSymbolParser.bind(this),
 		'o:EntitySymbol': this.EntitySymbolParser.bind(this),
@@ -814,13 +943,27 @@ export class PDParser {
 		'o:InheritanceLinkSymbol': this.InheritanceLinkSymbolParser.bind(this),
 		'o:AssociationLinkSymbol': this.AssociationLinkSymbolParser.bind(this),
 		'o:InnerCollectionSymbol': this.InnerColSymbolParser.bind(this),
-		'o:RequireLinkSymbol': this.RequireLinkSymbolParser.bind(this)
+		'o:RequireLinkSymbol': this.RequireLinkSymbolParser.bind(this),
+		'o:MessageSymbol': this.MessageSymbolParser.bind(this)
 	};
 }
 
 PDParser.prototype.SequenceParser = function () {};
 
 // HELPERs
+function getRectPosition(symbol) {
+	let rect = symbol['a:Rect'];
+	if (!rect) return null;
+
+	let [left, bottom, right, top] = rect.split(',');
+	return {
+		left: Number(left.slice(2)),
+		bottom: Number(bottom.slice(0, -1)),
+		right: Number(right.slice(2)),
+		top: Number(top.slice(0, -2))
+	};
+}
+
 function getColorDefinition(symbol) {
 	let colorTo = parseColor(symbol['a:FillColor']);
 	let colorFrom = parseColor(symbol['a:GradientEndColor']) || colorTo;
@@ -870,6 +1013,7 @@ let colObjMap = {
 	'c:Interfaces': 'o:Interface',
 	'c:RequireLinks': 'o:RequireLink',
 	'c:Packages': 'o:Package',
+	'c:Package.Objects': 'o:UMLObject',
 	'c:Model.Objects': 'o:UMLObject',
 	'c:Messages': 'o:Message',
 	'c:Views': 'o:View',

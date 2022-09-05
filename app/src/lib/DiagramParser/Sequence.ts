@@ -8,6 +8,9 @@ import type {
 	UMLObjectSequenceSymbol
 } from '$lib/PDTypes/Sequence/SequenceDiagram';
 
+// point 1 = bottom left
+// point 2 = top right
+
 export function parseSequenceDiagram(diagram: SequenceDiagram, PDObjects: object) {
 	let puml = `@startuml ${diagram['a:Name']}\n\n`;
 	let symbols = {};

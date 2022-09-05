@@ -52,13 +52,9 @@
 
 		if (!diagramId) return;
 		let model = parser.parseDiagram(diagramId.toString());
-		// let diagram = findDiagram(diagramList, diagramId);
-
-		// let model = parseDiagram(diagram.parent, diagram);
 
 		diagrams = [
 			{
-				diagram: { name: 'TODO', type: 'TODO' },
 				data: model,
 				imageUrl: compress(model)
 			}
@@ -73,6 +69,7 @@
 	<li>Use case diagram (.oom datoteke)</li>
 	<li>Fizični & logični diagram (.pdm datoteke)</li>
 	<li>Razredni diagram (.oom datoteke)</li>
+	<li>Diagram zaporedja (.oom datoteke)</li>
 </ul>
 <p>Izberite PowerDesigner datoteko, ki jo želite pretvoriti v PlantUML notacijo.</p>
 <input type="file" on:change={readText} accept=".cdm,.oom,.pdm" />
@@ -88,7 +85,6 @@
 
 {#each diagrams as { data, diagram, imageUrl }}
 	<div style="border-bottom: 1px solid black;">
-		<p><b>{diagram.name}</b> - {diagram.type} diagram</p>
 		<pre class="puml-notation">{data}</pre>
 		<div class="text-center">
 			<img class="puml-diagram" src={imageUrl} alt="PlantUML Diagram" />
