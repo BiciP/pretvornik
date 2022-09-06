@@ -250,7 +250,7 @@ export class PDParser {
 		let Symbols = Object.keys(this.SymbolParserMap);
 		for (let Symbol of Symbols) {
 			if (Diagram['x:Type'] === 'o:UseCaseDiagram' && Symbol === 'o:UseCaseSymbol') {
-				PUML += `rectangle ${Diagram['a:Name']} {\n`;
+				PUML += `rectangle "${Diagram['a:Name']}" {\n`;
 			}
 			let ParseSymbols = this.SymbolParserMap[Symbol];
 			if (!ParseSymbols) {
@@ -508,8 +508,6 @@ export class PDParser {
 		let puml = '';
 
 		symbols.forEach((symbol) => {
-			let object = this.getSymbolObject(symbol, 'o:UseCaseAssociation');
-
 			let SourceType = Object.keys(symbol['c:SourceSymbol'])[0];
 			let SourceRef = symbol['c:SourceSymbol'][SourceType]['@_Ref'];
 			let Source = this.PDSymbols[SourceType][SourceRef];
@@ -518,10 +516,9 @@ export class PDParser {
 			let DestRef = symbol['c:DestinationSymbol'][DestType]['@_Ref'];
 			let Dest = this.PDSymbols[DestType][DestRef];
 
-			let Name = object['a:Name'];
 			let color = parseColor(symbol['a:LineColor']);
 			let Line = symbol['a:ArrowStyle'] === 0 ? `-[#${color}]-` : `-[#${color}]->`;
-			let def = `${Source} ${Line} ${Dest}: ${Name}`;
+			let def = `${Source} ${Line} ${Dest}`;
 
 			puml += def + '\n';
 		});
@@ -881,15 +878,18 @@ export class PDParser {
 				}
 			}
 
-			let InstantiationRef = object['c:InstantiationClass']?.['o:Shortcut']?.['@_Ref'];
-			if (InstantiationRef) {
-				let InstantiationClass = this.PDObjects['o:Shortcut'][InstantiationRef];
-				if (object['a:Name'] === '') delete object['a:Name'];
-				if (object['a:Code'] === '') delete object['a:Code'];
-				object = {
-					...InstantiationClass,
-					...object
-				};
+			if (object['c:InstantiationClass']) {
+				let InstantiationType = Object.keys(object['c:InstantiationClass'])[0];
+				let InstantiationRef = object['c:InstantiationClass'][InstantiationType]['@_Ref'];
+				if (InstantiationRef) {
+					let InstantiationClass = this.PDObjects[InstantiationType][InstantiationRef];
+					if (object['a:Name'] === '') delete object['a:Name'];
+					if (object['a:Code'] === '') delete object['a:Code'];
+					object = {
+						...InstantiationClass,
+						...object
+					};
+				}
 			}
 		}
 
