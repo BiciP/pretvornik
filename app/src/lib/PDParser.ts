@@ -442,7 +442,9 @@ export class PDParser {
 		});
 
 		this.Rectangles.forEach((rect) => {
-			let rectPuml = `\nrectangle ${rect.color} {\n`;
+			let title = rect.text
+			title = title ? `"${title}" ` : title
+			let rectPuml = `\nrectangle ${title}${rect.color} {\n`;
 			rectPuml += rect.innerPUML;
 			rectPuml += '}\n';
 			puml += rectPuml;
@@ -838,9 +840,11 @@ export class PDParser {
 		symbols.forEach((symbol) => {
 			let position = getRectPosition(symbol);
 			let color = getColorDefinition(symbol, true);
+			let text = symbol['a:Text'] || '';
 			this.Rectangles.push({
 				position,
 				color,
+				text,
 				innerPUML: ''
 			});
 		});
