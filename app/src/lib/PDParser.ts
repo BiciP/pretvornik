@@ -18,6 +18,7 @@ export class PDParser {
 	SequenceParser: () => void;
 	CurrentDiagram: any;
 	SequenceEvents: any[];
+	Rectangles: any[];
 
 	constructor(PDFile: string) {
 		let { model, list } = parseFile(PDFile, 'COL_LIST');
@@ -249,21 +250,10 @@ export class PDParser {
 		let PDSymbols = Diagram['c:Symbols'] || {};
 		let Symbols = Object.keys(this.SymbolParserMap);
 		for (let Symbol of Symbols) {
-			if (Diagram['x:Type'] === 'o:UseCaseDiagram' && Symbol === 'o:UseCaseSymbol') {
-				PUML += `rectangle "${Diagram['a:Name']}" {\n`;
-			}
 			let ParseSymbols = this.SymbolParserMap[Symbol];
-			if (!ParseSymbols) {
-				if (Diagram['x:Type'] === 'o:UseCaseDiagram' && Symbol === 'o:PackageSymbol') {
-					PUML += '}\n\n';
-				}
-				continue;
-			}
+			if (!ParseSymbols) continue;
 			let col = getCollectionAsArray(PDSymbols[Symbol]);
 			PUML += ParseSymbols(col);
-			if (Diagram['x:Type'] === 'o:UseCaseDiagram' && Symbol === 'o:PackageSymbol') {
-				PUML += '}\n\n';
-			}
 		}
 
 		if (Diagram['x:Type'] === 'o:SequenceDiagram') {
@@ -432,7 +422,7 @@ export class PDParser {
 			let object = this.getSymbolObject(symbol, 'o:Actor');
 			let color = getColorDefinition(symbol);
 			let def = `actor "${object['a:Name']}" as ${object['@_Id']} ${color};line.bold\n`;
-			puml += def;
+			if (!this.findParentBoundry(symbol, def)) puml += def;
 			this.PDSymbols['o:ActorSymbol'][symbol['@_Id']] = object['@_Id'];
 		});
 
@@ -446,12 +436,19 @@ export class PDParser {
 		symbols.forEach((symbol) => {
 			let object = this.getSymbolObject(symbol, 'o:UseCase');
 			let color = getColorDefinition(symbol);
-			let def = `\tusecase "${object['a:Name']}" as ${object['@_Id']} ${color};line.bold\n`;
-			puml += def;
+			let def = `usecase "${object['a:Name']}" as ${object['@_Id']} ${color};line.bold\n`;
+			if (!this.findParentBoundry(symbol, def)) puml += def;
 			this.PDSymbols['o:UseCaseSymbol'][symbol['@_Id']] = object['@_Id'];
 		});
 
-		return puml;
+		this.Rectangles.forEach((rect) => {
+			let rectPuml = `\nrectangle ${rect.color} {\n`;
+			rectPuml += rect.innerPUML;
+			rectPuml += '}\n';
+			puml += rectPuml;
+		});
+
+		return puml + '\n';
 	}
 
 	DependencySymbolParser(symbols) {
@@ -836,6 +833,20 @@ export class PDParser {
 		return '';
 	}
 
+	RectangleSymbolParser(symbols) {
+		this.Rectangles = [];
+		symbols.forEach((symbol) => {
+			let position = getRectPosition(symbol);
+			let color = getColorDefinition(symbol, true);
+			this.Rectangles.push({
+				position,
+				color,
+				innerPUML: ''
+			});
+		});
+		return '';
+	}
+
 	getSymbolObject(Symbol: object, DefaultType: string) {
 		let Reference = Symbol['c:Object'];
 		let ObjectType = Object.keys(Reference)[0];
@@ -922,7 +933,28 @@ export class PDParser {
 		});
 	}
 
+	findParentBoundry(symbol, def) {
+		if (!def) {
+			console.warn(`def is undefined for symbol ${symbol['@_Id']}`);
+			return false;
+		}
+
+		return !this.Rectangles.every((rect) => {
+			let pos = getRectPosition(symbol);
+			let x = (pos.left + pos.right) / 2;
+			let y = (pos.bottom + pos.top) / 2;
+			let rectPos = rect.position;
+			if (x > rectPos.left && x < rectPos.right && y < rectPos.bottom && y > rectPos.top) {
+				rect.innerPUML += `\t${def}`;
+				return false;
+			}
+
+			return true;
+		});
+	}
+
 	SymbolParserMap = {
+		'o:RectangleSymbol': this.RectangleSymbolParser.bind(this),
 		'o:ActorSequenceSymbol': this.ActorSequenceSymbolParser.bind(this),
 		'o:UMLObjectSequenceSymbol': this.UMLObjSequenceSymbol.bind(this),
 		'o:ClassSymbol': this.ClassSymbolParser.bind(this),
@@ -968,12 +1000,12 @@ function getRectPosition(symbol) {
 	};
 }
 
-function getColorDefinition(symbol) {
+function getColorDefinition(symbol, line = false) {
 	let colorTo = parseColor(symbol['a:FillColor']);
 	let colorFrom = parseColor(symbol['a:GradientEndColor']) || colorTo;
 	let lineColor = parseColor(symbol['a:LineColor']);
 
-	if (!colorFrom && !colorTo) {
+	if (line || (!colorFrom && !colorTo)) {
 		return `#line:${lineColor}`;
 	} else {
 		return `#${colorFrom}/${colorTo};line:${lineColor}`;
