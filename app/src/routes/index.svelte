@@ -129,28 +129,35 @@
 	</nav>
 
 	<!-- <p>Izberite PowerDesigner datoteko, ki jo želite pretvoriti v PlantUML notacijo.</p> -->
-	<div>
-		<label
-			id="file-upload"
-			for="file"
-			on:drop={dropHandler}
-			on:dragover={dragOverHandler}
-			on:dragenter={() => dropzoneActive(true)}
-			on:dragleave={() => dropzoneActive(false)}
-		>
-			<span class="btn">Naloži datoteko</span>
-			<span>ali jo odloži tukaj</span>
-			<input id="file" type="file" on:change={readText} accept=".cdm,.oom,.pdm" />
-		</label>
-	</div>
-
-	<hr />
-
 	<div class="flex">
+		<div>
+			<h3>Podprti modeli:</h3>
+			<ul>
+				<li>Konceptualni model (.cdm datoteke)</li>
+				<li>Fizični & logični diagram (.pdm datoteke)</li>
+				<li>Use case diagram (.oom datoteke)</li>
+				<li>Razredni diagram (.oom datoteke)</li>
+				<li>Diagram zaporedja (.oom datoteke)</li>
+			</ul>
+		</div>
+		<div style="flex: 1;">
+			<label
+				id="file-upload"
+				for="file"
+				on:drop={dropHandler}
+				on:dragover={dragOverHandler}
+				on:dragenter={() => dropzoneActive(true)}
+				on:dragleave={() => dropzoneActive(false)}
+			>
+				<span class="btn">Naloži datoteko</span>
+				<span>ali jo odloži tukaj</span>
+				<input id="file" type="file" on:change={readText} accept=".cdm,.oom,.pdm" />
+			</label>
+		</div>
 		<div class="info">
-			{#if diagramList.length}
-				<div>
-					<h4>Izberite diagram za pretvorbo</h4>
+			<div>
+				<h4>Izberite diagram za pretvorbo</h4>
+				{#if diagramList.length}
 					<form id="form" on:submit={handleSubmit}>
 						{#each diagramList as diagram}
 							<DiagramItem {diagram} />
@@ -162,35 +169,32 @@
 							{/if}
 						</div>
 					</form>
-				</div>
-			{/if}
-			<div>
-				<h3>Podprti modeli:</h3>
-				<ul>
-					<li>Konceptualni model (.cdm datoteke)</li>
-					<li>Fizični & logični diagram (.pdm datoteke)</li>
-					<li>Use case diagram (.oom datoteke)</li>
-					<li>Razredni diagram (.oom datoteke)</li>
-					<li>Diagram zaporedja (.oom datoteke)</li>
-				</ul>
+				{:else}
+					<p style="padding: .5rem 0; opacity: .8;">Ni diagramov za pretvorbo</p>
+				{/if}
 			</div>
 		</div>
-		<div style="flex: 1;">
-			{#each diagrams as { data, diagram, imageUrl }}
-				<div>
-					<!-- <pre class="puml-notation">{data}</pre> -->
-					<div class="text-center">
-						<img class="puml-diagram" src={imageUrl} alt="PlantUML Diagram" />
-					</div>
+	</div>
+
+	<hr />
+
+	<div>
+		{#each diagrams as { data, diagram, imageUrl }}
+			<div>
+				<div class="text-center">
+					<img class="puml-diagram" src={imageUrl} alt="PlantUML Diagram" />
 				</div>
-			{/each}
-		</div>
+				<pre class="puml-notation">{data}</pre>
+			</div>
+		{/each}
 	</div>
 </div>
 
 <style>
 	.flex {
 		display: flex;
+		gap: 2rem;
+		margin: 2rem 0;
 	}
 
 	.info {
@@ -230,7 +234,6 @@
 
 	.puml-diagram {
 		max-width: calc(100% - 10px);
-		max-height: 65vh;
 		background: white;
 		border-radius: 3px;
 		box-shadow: 3px 5px 10px 2px #dddddd;
@@ -242,12 +245,13 @@
 		border-radius: 3px;
 		padding: 1rem;
 		box-shadow: 3px 5px 8px 0 #e5e5e5;
+		margin-top: 0.5rem;
 	}
 
 	.container {
 		padding: 0 2rem;
 		background-color: whitesmoke;
-		height: 100vh;
+		min-height: 100vh;
 	}
 
 	nav {
@@ -263,10 +267,10 @@
 		border-radius: 5px;
 		display: flex;
 		flex-direction: column;
-		padding: 2rem 0;
+		height: 100%;
 		align-items: center;
 		justify-content: center;
-		margin: 2rem 0;
+		max-height: 112px;
 	}
 
 	#file-upload span.btn {
