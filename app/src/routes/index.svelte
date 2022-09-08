@@ -11,25 +11,27 @@
 	let parser: PDParser;
 	let diagramList: any[] = [];
 
+	function parseFile(file) {
+		let reader: FileReader = new FileReader();
+		reader.onload = function (e) {
+			let output = e.target?.result;
+			parser = new PDParser(output.toString());
+			// diagramList = parser.DiagramList;
+			// pdModel = parser.PDModel;
+			let { model, list } = getDiagramList(output);
+			diagramList = list;
+			pdModel = model;
+		};
+		reader.readAsText(file);
+	}
+
 	function readText(filePath: any) {
 		diagrams = [];
-		let reader: FileReader = new FileReader();
-		var output: string | ArrayBuffer | undefined | null = '';
-		if (filePath.target?.files && filePath.target?.files[0] && reader) {
-			reader.onload = function (e) {
-				output = e.target?.result;
-				parser = new PDParser(output.toString());
-				// diagramList = parser.DiagramList;
-				// pdModel = parser.PDModel;
-				let { model, list } = getDiagramList(output);
-				diagramList = list;
-				pdModel = model;
-			};
-			reader.readAsText(filePath.target.files[0]);
-		} else {
-			return false;
+		// @ts-ignore
+		document.getElementById('form')?.reset?.();
+		if (filePath.target?.files && filePath.target?.files[0]) {
+			parseFile(filePath.target.files[0]);
 		}
-		return true;
 	}
 
 	function findDiagram(list, id) {
@@ -63,8 +65,8 @@
 
 	function savePUML() {
 		let fileData = diagrams[0].data;
-		let name = parser.getDiagramName()
-		download(fileData, `${name}.txt`, 'text/plain')
+		let name = parser.getDiagramName();
+		download(fileData, `${name}.txt`, 'text/plain');
 	}
 
 	// Function to download data to a file
@@ -72,7 +74,7 @@
 		var file = new Blob([data], { type: type });
 		// @ts-ignore
 		if (window.navigator.msSaveOrOpenBlob) {
-			// @ts-ignore // IE10+ 
+			// @ts-ignore // IE10+
 			window.navigator.msSaveOrOpenBlob(file, filename);
 		} else {
 			// Others
@@ -88,49 +90,151 @@
 			}, 0);
 		}
 	}
+
+	function dropHandler(ev) {
+		ev.preventDefault();
+		dropzoneActive(false);
+
+		if (ev.dataTransfer.items) {
+			// Use DataTransferItemList interface to access the file(s)
+			let item = [...ev.dataTransfer.items][0];
+			// If dropped items aren't files, reject them
+			if (item.kind === 'file') {
+				const file = item.getAsFile();
+				let type = getFileExtension(file.name);
+				if (!['oom', 'cdm', 'pdm'].includes(type)) return;
+				parseFile(file);
+			}
+		}
+	}
+
+	function getFileExtension(filename) {
+		return filename.split('.').pop();
+	}
+
+	function dragOverHandler(ev) {
+		ev.preventDefault();
+	}
+
+	function dropzoneActive(active) {
+		let dropzone = document.getElementById('file-upload');
+		if (active) dropzone.style.backgroundColor = '#e2f6ff';
+		else dropzone.style.backgroundColor = 'unset';
+	}
 </script>
 
-<h1>Pretvornik PowerDesigner v PlantUML notacijo</h1>
-<h3>Podprti modeli:</h3>
-<ul>
-	<li>Konceptualni model (.cdm datoteke)</li>
-	<li>Fizični & logični diagram (.pdm datoteke)</li>
-	<li>Use case diagram (.oom datoteke)</li>
-	<li>Razredni diagram (.oom datoteke)</li>
-	<li>Diagram zaporedja (.oom datoteke)</li>
-</ul>
-<p>Izberite PowerDesigner datoteko, ki jo želite pretvoriti v PlantUML notacijo.</p>
-<input type="file" on:change={readText} accept=".cdm,.oom,.pdm" />
+<div class="container">
+	<nav>
+		<h1>PowerDesigner v PlantUML pretvornik</h1>
+	</nav>
 
-{#if diagramList.length}
-	<form on:submit={handleSubmit}>
-		{#each diagramList as diagram}
-			<DiagramItem {diagram} />
-		{/each}
-		<input type="submit" />
-	</form>
-{/if}
+	<!-- <p>Izberite PowerDesigner datoteko, ki jo želite pretvoriti v PlantUML notacijo.</p> -->
+	<div>
+		<label
+			id="file-upload"
+			for="file"
+			on:drop={dropHandler}
+			on:dragover={dragOverHandler}
+			on:dragenter={() => dropzoneActive(true)}
+			on:dragleave={() => dropzoneActive(false)}
+		>
+			<span class="btn">Naloži datoteko</span>
+			<span>ali jo odloži tukaj</span>
+			<input id="file" type="file" on:change={readText} accept=".cdm,.oom,.pdm" />
+		</label>
+	</div>
 
-{#if diagrams.length}
-	<button on:click={savePUML}>Shrani</button>
-{/if}
+	<hr />
 
-{#each diagrams as { data, diagram, imageUrl }}
-	<div style="border-bottom: 1px solid black;">
-		<pre class="puml-notation">{data}</pre>
-		<div class="text-center">
-			<img class="puml-diagram" src={imageUrl} alt="PlantUML Diagram" />
+	<div class="flex">
+		<div class="info">
+			{#if diagramList.length}
+				<div>
+					<h4>Izberite diagram za pretvorbo</h4>
+					<form id="form" on:submit={handleSubmit}>
+						{#each diagramList as diagram}
+							<DiagramItem {diagram} />
+						{/each}
+						<div class="form-actions">
+							<input type="submit" value="Pretvori" />
+							{#if diagrams.length}
+								<button on:click={savePUML}>Shrani</button>
+							{/if}
+						</div>
+					</form>
+				</div>
+			{/if}
+			<div>
+				<h3>Podprti modeli:</h3>
+				<ul>
+					<li>Konceptualni model (.cdm datoteke)</li>
+					<li>Fizični & logični diagram (.pdm datoteke)</li>
+					<li>Use case diagram (.oom datoteke)</li>
+					<li>Razredni diagram (.oom datoteke)</li>
+					<li>Diagram zaporedja (.oom datoteke)</li>
+				</ul>
+			</div>
+		</div>
+		<div style="flex: 1;">
+			{#each diagrams as { data, diagram, imageUrl }}
+				<div>
+					<!-- <pre class="puml-notation">{data}</pre> -->
+					<div class="text-center">
+						<img class="puml-diagram" src={imageUrl} alt="PlantUML Diagram" />
+					</div>
+				</div>
+			{/each}
 		</div>
 	</div>
-{/each}
+</div>
 
 <style>
+	.flex {
+		display: flex;
+	}
+
+	.info {
+		min-width: 370px;
+	}
+
+	form {
+		margin: 0.5rem 0 1rem;
+	}
+
+	input[type='submit'],
+	.form-actions button {
+		background-color: #278fe3;
+		border-radius: 3px;
+		border: none;
+		padding: 0.5rem 1.5rem;
+		color: white;
+		font-weight: 600;
+		font-size: 1rem;
+		margin-top: 5px;
+	}
+
+	input[type='submit']:hover,
+	.form-actions button:hover {
+		background-color: #1e7cc7 !important;
+		cursor: pointer;
+	}
+
+	.form-actions {
+		display: flex;
+		gap: 0.5rem;
+	}
+
 	.text-center {
 		text-align: center;
 	}
 
 	.puml-diagram {
-		max-width: 100%;
+		max-width: calc(100% - 10px);
+		max-height: 65vh;
+		background: white;
+		border-radius: 3px;
+		box-shadow: 3px 5px 10px 2px #dddddd;
+		padding: 5px;
 	}
 
 	.puml-notation {
@@ -138,5 +242,62 @@
 		border-radius: 3px;
 		padding: 1rem;
 		box-shadow: 3px 5px 8px 0 #e5e5e5;
+	}
+
+	.container {
+		padding: 0 2rem;
+		background-color: whitesmoke;
+		height: 100vh;
+	}
+
+	nav {
+		margin: 0 -2rem;
+		background-color: white;
+		padding: 1rem 2rem;
+		box-shadow: 0px 2px 15px 10px #f3f3f3;
+	}
+
+	#file-upload {
+		position: relative;
+		border: 3px dashed #278fe3;
+		border-radius: 5px;
+		display: flex;
+		flex-direction: column;
+		padding: 2rem 0;
+		align-items: center;
+		justify-content: center;
+		margin: 2rem 0;
+	}
+
+	#file-upload span.btn {
+		background-color: #278fe3;
+		border-radius: 3px;
+		border: none;
+		padding: 0.5rem 1.5rem;
+		color: white;
+		font-weight: 600;
+		font-size: 1rem;
+		margin-bottom: 5px;
+	}
+
+	#file-upload .btn:hover {
+		background-color: #1e7cc7 !important;
+		cursor: pointer;
+	}
+
+	#file-upload span {
+		color: #9e9e9e;
+		font-size: 0.875rem;
+	}
+
+	#file-upload input {
+		position: absolute;
+		left: -200vw;
+	}
+
+	hr {
+		border: none;
+		border-bottom: 1px solid #cbcbcb;
+		margin-bottom: 2rem;
 	}
 </style>
