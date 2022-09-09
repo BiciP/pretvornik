@@ -169,6 +169,13 @@
 							{/if}
 						</div>
 					</form>
+					{#each diagrams as { imageUrl }}
+						<h4>
+							<a target="_blank" href={`http://www.plantuml.com/plantuml/png/${imageUrl}`}>PNG</a>
+							<a target="_blank" href={`http://www.plantuml.com/plantuml/svg/${imageUrl}`}>SVG</a>
+							<a target="_blank" href={`http://www.plantuml.com/plantuml/txt/${imageUrl}`}>ASCII Art</a>
+						</h4>
+					{/each}
 				{:else}
 					<p style="padding: .5rem 0; opacity: .8;">Ni diagramov za pretvorbo</p>
 				{/if}
@@ -182,7 +189,11 @@
 		{#each diagrams as { data, diagram, imageUrl }}
 			<div>
 				<div class="text-center">
-					<img class="puml-diagram" src={imageUrl} alt="PlantUML Diagram" />
+					<img
+						class="puml-diagram"
+						src={`http://www.plantuml.com/plantuml/img/${imageUrl}`}
+						alt="PlantUML Diagram"
+					/>
 				</div>
 				<pre class="puml-notation">{data}</pre>
 			</div>

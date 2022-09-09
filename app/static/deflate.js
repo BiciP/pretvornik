@@ -61,7 +61,7 @@ if (deflater) {
 }
 
 function done_deflating(e) {
-	return 'http://www.plantuml.com/plantuml/img/' + encode64(e.data);
+	return encode64(e.data);
 }
 
 function compress(s) {
