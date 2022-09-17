@@ -561,17 +561,22 @@ export class PDParser {
 				let object = this.getSymbolObject(symbol, 'o:Association');
 				let roleA = object['a:RoleAMultiplicity'];
 				let roleB = object['a:RoleBMultiplicity'];
-				let type = object['a:RoleAIndicator'];
+				let typeA = object['a:RoleAIndicator'];
+				let typeB = object['a:RoleBIndicator'];
 				let navigability = object['a:RoleBNavigability'] !== 0
-				let arrow;
+				let arrow = '';
 
-				if (type) {
-					arrow = type === 'A' ? 'o-[#COLOR]-' : '*-[#COLOR]-';
-				} else {
-					arrow = '-[#COLOR]-';
+				if (typeA) {
+					arrow += typeA === 'A' ? 'o' : '*';
 				}
 
-				if (navigability) arrow += ">"
+				arrow += '-[#COLOR]-'
+
+				if (typeB) {
+					arrow += typeB === 'A' ? 'o' : '*';
+				} else if (navigability) {
+					arrow += ">"
+				}
 
 				let SourceType = Object.keys(symbol['c:SourceSymbol'])[0];
 				let SourceRef = symbol['c:SourceSymbol'][SourceType]['@_Ref'];
