@@ -541,6 +541,7 @@ export class PDParser {
 		return puml;
 	}
 
+	// todo: document this
 	AssociationSymbolParser(symbols) {
 		let puml = '';
 		if (this.CurrentDiagram['x:Type'] === 'o:ConceptualDiagram') {
@@ -561,13 +562,16 @@ export class PDParser {
 				let roleA = object['a:RoleAMultiplicity'];
 				let roleB = object['a:RoleBMultiplicity'];
 				let type = object['a:RoleAIndicator'];
+				let navigability = object['a:RoleBNavigability'] !== 0
 				let arrow;
 
 				if (type) {
-					arrow = type === 'A' ? 'o-[#COLOR]->' : '*-[#COLOR]->';
+					arrow = type === 'A' ? 'o-[#COLOR]-' : '*-[#COLOR]-';
 				} else {
-					arrow = '-[#COLOR]->';
+					arrow = '-[#COLOR]-';
 				}
+
+				if (navigability) arrow += ">"
 
 				let SourceType = Object.keys(symbol['c:SourceSymbol'])[0];
 				let SourceRef = symbol['c:SourceSymbol'][SourceType]['@_Ref'];
@@ -586,6 +590,7 @@ export class PDParser {
 		return puml;
 	}
 
+	// todo: document this
 	AssociationLinkSymbolParser(symbols) {
 		let puml = '';
 
@@ -610,6 +615,7 @@ export class PDParser {
 		return puml;
 	}
 
+	// todo: document this
 	RelationshipSymbolParser(symbols) {
 		let puml = '';
 
