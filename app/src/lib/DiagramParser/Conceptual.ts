@@ -128,18 +128,18 @@ export function parseEntity(entity: PDEntityObject, dataItems) {
 		entity['c:Attributes']?.['o:EntityAttribute']
 	);
 	attributes.forEach((attribute) => {
-		let isIdentifier = piAttributes.has(attribute['@_Id']);
-		let isMandatory = attribute['a:BaseAttribute.Mandatory'] === 1;
-		let dataItemRef = attribute['c:DataItem']['o:DataItem']['@_Ref'];
-		let dataItem = dataItems[dataItemRef];
+		let isIdentifier = piAttributes.has(attribute['@_Id']); // preveri ali je atribut identifikator
+		let isMandatory = attribute['a:BaseAttribute.Mandatory'] === 1; // preveri ali je atribut obvezen
+		let dataItemRef = attribute['c:DataItem']['o:DataItem']['@_Ref']; // pridobi referenco na podatkovni element
+		let dataItem = dataItems[dataItemRef]; // definicija podatkovnega elementa
 		if (dataItem == null)
 			throw new ParserError(`Attribute data item does not exist: Ref[${dataItemRef}]`);
-		let dataType = extractDataType(dataItem);
-		let puml = `\t${isMandatory ? '* ' : ''}${dataItem['a:Name']}`;
+		let dataType = extractDataType(dataItem); // ekstrahiraj podatkovni tip atributa
+		let puml = `\t${isMandatory ? '* ' : ''}${dataItem['a:Name']}`; // začni PlantUML notacijo
 		if (dataType != null || isIdentifier) {
 			puml += ` : `;
-			if (dataType) puml += `${dataType} `;
-			if (isIdentifier) puml += '<<pi>>';
+			if (dataType) puml += `${dataType} `; // pripiši podatkovni tip
+			if (isIdentifier) puml += '<<pi>>'; // pripiši oznako za identifikator
 		}
 		puml += '\n';
 		PUML += puml;
@@ -170,9 +170,9 @@ export function parseEntities(entities: PDEntityObject[], pdModel: object) {
 
 export function getRelationshipArrow(relationship: PDRelationship) {
 	let puml = '';
-	puml += getCardinality(relationship, 1);
-	puml += relationship['a:DependentRole'] ? '.{{COLOR}}.' : '-{{COLOR}}-';
 	puml += getCardinality(relationship, 2);
+	puml += relationship['a:DependentRole'] ? '.{{COLOR}}.' : '-{{COLOR}}-';
+	puml += getCardinality(relationship, 1);
 	return puml;
 }
 
@@ -284,19 +284,19 @@ let dataTypes = {
 
 let cardinalityMap = {
 	'0,1': {
-		1: '|o',
-		2: 'o|'
+		2: '|o',
+		1: 'o|'
 	},
 	'0,n': {
-		1: '}o',
-		2: 'o{'
+		2: '}o',
+		1: 'o{'
 	},
 	'1,1': {
-		1: '||',
-		2: '||'
+		2: '||',
+		1: '||'
 	},
 	'1,n': {
-		1: '}|',
-		2: '|{'
+		2: '}|',
+		1: '|{'
 	}
 };
