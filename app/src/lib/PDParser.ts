@@ -274,13 +274,21 @@ export class PDParser {
 			// });
 			Events.forEach((event) => {
 				let activate = false
+				let sourceOpeners = []
 				let deactivate = []
 
 				for (let key in this.SequenceActivations) {
 					let obj = this.SequenceActivations[key]
-					if (obj['++'] === event.id) activate = true
+					if (obj['++'] === event.id) {
+						activate = true
+						if (obj.sourceOpener) sourceOpeners.push(this.PDSymbols['o:ActivationSymbol'][key])
+					}
 					if (obj['--'] === event.id) deactivate.push(this.PDSymbols['o:ActivationSymbol'][key])
 				}
+
+				sourceOpeners.forEach(id => {
+					PUML += `activate ${id}\n`
+				})
 
 				event.def = event.def.replace('{{ACT}}', activate ? ' ++' : '')
 				PUML += event.def + '\n'
@@ -879,14 +887,15 @@ export class PDParser {
 			let DestType = Object.keys(symbol['c:DestinationSymbol'])[0];
 			let DestRef = symbol['c:DestinationSymbol'][DestType]['@_Ref'];
 			let Dest = this.PDSymbols[DestType][DestRef];
-
+			console.log(SourceRef, DestRef)
 			if (SourceType === 'o:ActivationSymbol') {
 				if (this.SequenceActivations[SourceRef]) {
 					this.SequenceActivations[SourceRef]['--'] = id
 				} else {
 					this.SequenceActivations[SourceRef] = {
 						'++': id,
-						'--': id
+						'--': id,
+						'sourceOpener': true
 					}
 				}
 			}
@@ -906,13 +915,14 @@ export class PDParser {
 			let arrow = object['a:ControlFlow'] === 'R' ? '-->' : object['a:ControlFlow'] === 'C' ? '->' : '->>';
 			let seq = object['a:SequenceNumber'];
 			let num = seq ? `${seq}: ` : '';
-			let def = `${Source} ${arrow} ${Dest}{{ACT}}: ${num}${object['a:Name']}`;
+			let def = `${Source} ${arrow} ${Dest}{{ACT}}: ${num}${object['a:Name']} ${id}`;
 			this.SequenceEvents.push({
 				time: (bottom + top) / 2,
 				seq, def, id
 			});
 		});
 
+		console.log(this.SequenceActivations)
 		// otherwise this prints undefined
 		return '';
 	}
@@ -998,22 +1008,6 @@ export class PDParser {
 		let PDAct = symbol['c:SlaveSubSymbols']?.['o:ActivationSymbol'];
 		let Act = getCollectionAsArray(PDAct);
 		Act.forEach((activation) => {
-			// let pos = getRectPosition(activation);
-			// let startDef = `activate ${object['@_Id']}`;
-			// let endDef = `deactivate ${object['@_Id']}`;
-
-			// // add activate event
-			// this.SequenceEvents.push({
-			// 	time: pos.top,
-			// 	def: startDef
-			// });
-
-			// // add deactivate event
-			// this.SequenceEvents.push({
-			// 	time: pos.bottom,
-			// 	def: endDef
-			// });
-
 			// add to symbol-object map
 			this.PDSymbols['o:ActivationSymbol'][activation['@_Id']] = object['@_Id'];
 		});
