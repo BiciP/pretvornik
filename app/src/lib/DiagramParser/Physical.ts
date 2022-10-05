@@ -63,7 +63,7 @@ export function parseTable(table: PDTableObject) {
 
 	let PUML = `entity "${table['a:Name']}" as ${table['@_Id']} {{COLOR}} {\n`;
 
-	// parse primary keys
+	// oznaci primarne kljuce
 	pks.forEach((pk) => {
 		let keyId = pk['@_Ref'];
 		let keyIndex = keys.findIndex((key) => key['@_Id'] === keyId);
@@ -81,6 +81,7 @@ export function parseTable(table: PDTableObject) {
 		});
 	});
 
+	// oznaci tuje kljuce z atributom foreignKey
 	fks.forEach((fkObj, i) => {
 		fkParents.add(fkObj.parentRef);
 		let column = columns.find((col) => col['@_Id'] === fkObj.obj2);
@@ -88,8 +89,10 @@ export function parseTable(table: PDTableObject) {
 		column.foreignKey = fkParents.size;
 	});
 
+	// pretvori stolpce primarnih kljucev
 	columns.filter((col) => col.isPrimary).forEach((col) => (PUML += parseColumnData(col)));
 	PUML += '\t---\n';
+	// pretvori ostale stolpce
 	columns.filter((col) => !col.isPrimary).forEach((col) => (PUML += parseColumnData(col)));
 
 	PUML += `}\n`;
@@ -108,8 +111,8 @@ export function parseTables(tables: PDTableObject[]) {
 	return obj;
 }
 
+// razcleni stike stolpcev za definicijo tujih kljucev
 export function parseReference(ref: PDReferenceObject) {
-	// console.log({ref})
 	let joins: ReferenceJoinObject[] = getCollectionAsArray(ref['c:Joins']?.['o:ReferenceJoin']);
 	joins.forEach((join) => {
 		let child = getObjectRef(ref['c:ChildTable']);

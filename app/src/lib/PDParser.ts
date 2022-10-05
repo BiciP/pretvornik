@@ -17,8 +17,10 @@ export class PDParser {
 	private PDSymbols: object;
 	SequenceParser: () => void;
 	CurrentDiagram: any;
+	SequenceDefinitions: any[];
 	SequenceEvents: any[];
 	Rectangles: any[];
+	SequenceActivations: any;
 
 	constructor(PDFile: string) {
 		let { model, list } = parseFile(PDFile, 'COL_LIST');
@@ -51,7 +53,9 @@ export class PDParser {
 		} else if (Diagram['x:Type'] === 'o:UseCaseDiagram') {
 			PUML += `left to right direction\n`;
 		} else if (Diagram['x:Type'] === 'o:SequenceDiagram') {
+			this.SequenceDefinitions = [];
 			this.SequenceEvents = [];
+			this.SequenceActivations = {};
 		} else {
 			console.log(Diagram['x:Type']);
 		}
@@ -257,8 +261,34 @@ export class PDParser {
 		}
 
 		if (Diagram['x:Type'] === 'o:SequenceDiagram') {
-			let Events = this.SequenceEvents.sort((a, b) => b.time - a.time);
-			Events.forEach(({ def }) => (PUML += def + '\n'));
+			let Definitions = this.SequenceDefinitions.sort((a, b) => a.left - b.left);
+			Definitions.forEach(({ def }) => (PUML += def + '\n'));
+
+			let Events = this.SequenceEvents
+			// ! Sorting is redundant as we already do it while parsing the symbols
+			// .sort((a, b) => {
+			// 	if (a.seq != null && b.seq != null) {
+			// 		return a.seq - b.seq
+			// 	}
+			// 	return b.time - a.time
+			// });
+			Events.forEach((event) => {
+				let activate = false
+				let deactivate = []
+
+				for (let key in this.SequenceActivations) {
+					let obj = this.SequenceActivations[key]
+					if (obj['++'] === event.id) activate = true
+					if (obj['--'] === event.id) deactivate.push(this.PDSymbols['o:ActivationSymbol'][key])
+				}
+
+				event.def = event.def.replace('{{ACT}}', activate ? ' ++' : '')
+				PUML += event.def + '\n'
+
+				deactivate.forEach(id => {
+					PUML += `deactivate ${id}\n`
+				})
+			});
 		}
 
 		return PUML;
@@ -442,8 +472,8 @@ export class PDParser {
 		});
 
 		this.Rectangles.forEach((rect) => {
-			let title = rect.text
-			title = title ? `"${title}" ` : title
+			let title = rect.text;
+			title = title ? `"${title}" ` : title;
 			let rectPuml = `\nrectangle ${title}${rect.color} {\n`;
 			rectPuml += rect.innerPUML;
 			rectPuml += '}\n';
@@ -563,19 +593,19 @@ export class PDParser {
 				let roleB = object['a:RoleBMultiplicity'];
 				let typeA = object['a:RoleAIndicator'];
 				let typeB = object['a:RoleBIndicator'];
-				let navigability = object['a:RoleBNavigability'] !== 0
+				let navigability = object['a:RoleBNavigability'] !== 0;
 				let arrow = '';
 
 				if (typeA) {
 					arrow += typeA === 'A' ? 'o' : '*';
 				}
 
-				arrow += '-[#COLOR]-'
+				arrow += '-[#COLOR]-';
 
 				if (typeB) {
 					arrow += typeB === 'A' ? 'o' : '*';
 				} else if (navigability) {
-					arrow += ">"
+					arrow += '>';
 				}
 
 				let SourceType = Object.keys(symbol['c:SourceSymbol'])[0];
@@ -789,18 +819,18 @@ export class PDParser {
 	}
 
 	ActorSequenceSymbolParser(symbols) {
-		let puml = '';
 		this.PDSymbols['o:ActorSequenceSymbol'] = this.PDSymbols['o:ActorSequenceSymbol'] || {};
 
 		symbols.forEach((symbol) => {
 			let object = this.getSymbolObject(symbol, 'o:Actor');
 			let def = `actor "${object['a:Name']}" as ${object['@_Id']}\n`;
-			puml += def;
+			let {left} = getRectPosition(symbol)
+			this.SequenceDefinitions.push({def, left})
 			this.PDSymbols['o:ActorSequenceSymbol'][symbol['@_Id']] = object['@_Id'];
 			this.parseSymbolActivations(symbol, object);
 		});
 
-		return puml;
+		return '';
 	}
 
 	UMLObjSequenceSymbol(symbols) {
@@ -810,7 +840,8 @@ export class PDParser {
 		symbols.forEach((symbol) => {
 			let object = this.getSymbolObject(symbol, 'o:UMLObject');
 			let def = `participant "${object['a:Name']}" as ${object['@_Id']}\n`;
-			puml += def;
+			let {left} = getRectPosition(symbol)
+			this.SequenceDefinitions.push({def, left})
 			this.PDSymbols['o:UMLObjectSequenceSymbol'][symbol['@_Id']] = object['@_Id'];
 			this.parseSymbolActivations(symbol, object);
 		});
@@ -819,7 +850,26 @@ export class PDParser {
 	}
 
 	MessageSymbolParser(symbols) {
+		symbols = symbols.sort((a, b) => {
+			let aObj = this.getSymbolObject(a, 'o:Message');
+			let aSeq = aObj['a:SequenceNumber'];
+
+			let bObj = this.getSymbolObject(b, 'o:Message');
+			let bSeq = bObj['a:SequenceNumber'];
+
+			if (aSeq != null && bSeq != null) {
+				return aSeq - bSeq
+			}
+
+			let aPos = getRectPosition(a);
+			let bPos = getRectPosition(a);
+			let aReal = (aPos.bottom + aPos.top) / 2
+			let bReal = (bPos.bottom + bPos.top) / 2
+			return bReal - aReal
+		})
+
 		symbols.forEach((symbol) => {
+			let id = symbol['@_Id']
 			let object = this.getSymbolObject(symbol, 'o:Message');
 
 			let SourceType = Object.keys(symbol['c:SourceSymbol'])[0];
@@ -830,15 +880,36 @@ export class PDParser {
 			let DestRef = symbol['c:DestinationSymbol'][DestType]['@_Ref'];
 			let Dest = this.PDSymbols[DestType][DestRef];
 
+			if (SourceType === 'o:ActivationSymbol') {
+				if (this.SequenceActivations[SourceRef]) {
+					this.SequenceActivations[SourceRef]['--'] = id
+				} else {
+					this.SequenceActivations[SourceRef] = {
+						'++': id,
+						'--': id
+					}
+				}
+			}
+
+			if (DestType === 'o:ActivationSymbol') {
+				if (this.SequenceActivations[DestRef]) {
+					this.SequenceActivations[DestRef]['--'] = id
+				} else {
+					this.SequenceActivations[DestRef] = {
+						'++': id,
+						'--': id
+					}
+				}
+			}
+			
 			let { bottom, top } = getRectPosition(symbol);
-			let arrow =
-				object['a:ControlFlow'] === 'R' ? '-->' : object['a:ControlFlow'] === 'C' ? '->' : '->>';
-			let num = object['a:SequenceNumber'];
-			num = num ? `${num}: ` : '';
-			let def = `${Source} ${arrow} ${Dest}: "${num}${object['a:Name']}"`;
+			let arrow = object['a:ControlFlow'] === 'R' ? '-->' : object['a:ControlFlow'] === 'C' ? '->' : '->>';
+			let seq = object['a:SequenceNumber'];
+			let num = seq ? `${seq}: ` : '';
+			let def = `${Source} ${arrow} ${Dest}{{ACT}}: ${num}${object['a:Name']} (${id})`;
 			this.SequenceEvents.push({
 				time: (bottom + top) / 2,
-				def
+				seq, def, id
 			});
 		});
 
@@ -927,21 +998,21 @@ export class PDParser {
 		let PDAct = symbol['c:SlaveSubSymbols']?.['o:ActivationSymbol'];
 		let Act = getCollectionAsArray(PDAct);
 		Act.forEach((activation) => {
-			let pos = getRectPosition(activation);
-			let startDef = `activate ${object['@_Id']}`;
-			let endDef = `deactivate ${object['@_Id']}`;
+			// let pos = getRectPosition(activation);
+			// let startDef = `activate ${object['@_Id']}`;
+			// let endDef = `deactivate ${object['@_Id']}`;
 
-			// add activate event
-			this.SequenceEvents.push({
-				time: pos.top,
-				def: startDef
-			});
+			// // add activate event
+			// this.SequenceEvents.push({
+			// 	time: pos.top,
+			// 	def: startDef
+			// });
 
-			// add deactivate event
-			this.SequenceEvents.push({
-				time: pos.bottom,
-				def: endDef
-			});
+			// // add deactivate event
+			// this.SequenceEvents.push({
+			// 	time: pos.bottom,
+			// 	def: endDef
+			// });
 
 			// add to symbol-object map
 			this.PDSymbols['o:ActivationSymbol'][activation['@_Id']] = object['@_Id'];
@@ -967,11 +1038,12 @@ export class PDParser {
 			return true;
 		});
 	}
-
+	
 	SymbolParserMap = {
 		'o:RectangleSymbol': this.RectangleSymbolParser.bind(this),
 		'o:ActorSequenceSymbol': this.ActorSequenceSymbolParser.bind(this),
 		'o:UMLObjectSequenceSymbol': this.UMLObjSequenceSymbol.bind(this),
+		'o:MessageSymbol': this.MessageSymbolParser.bind(this),
 		'o:ClassSymbol': this.ClassSymbolParser.bind(this),
 		'o:InterfaceSymbol': this.InterfaceSymbolParser.bind(this),
 		'o:EntitySymbol': this.EntitySymbolParser.bind(this),
@@ -995,7 +1067,6 @@ export class PDParser {
 		'o:AssociationLinkSymbol': this.AssociationLinkSymbolParser.bind(this),
 		'o:InnerCollectionSymbol': this.InnerColSymbolParser.bind(this),
 		'o:RequireLinkSymbol': this.RequireLinkSymbolParser.bind(this),
-		'o:MessageSymbol': this.MessageSymbolParser.bind(this)
 	};
 }
 
