@@ -906,7 +906,7 @@ export class PDParser {
 			let arrow = object['a:ControlFlow'] === 'R' ? '-->' : object['a:ControlFlow'] === 'C' ? '->' : '->>';
 			let seq = object['a:SequenceNumber'];
 			let num = seq ? `${seq}: ` : '';
-			let def = `${Source} ${arrow} ${Dest}{{ACT}}: ${num}${object['a:Name']} (${id})`;
+			let def = `${Source} ${arrow} ${Dest}{{ACT}}: ${num}${object['a:Name']}`;
 			this.SequenceEvents.push({
 				time: (bottom + top) / 2,
 				seq, def, id
